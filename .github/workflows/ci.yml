@@ -54,7 +54,10 @@ jobs:
         env:
           VERIBIOTA_SIG_KEY: ${{ secrets.VERIBIOTA_SIG_KEY }}
           VERIBIOTA_SIG_KID: veribiota-prod-2025-q1
-        run: make sign-soft
+        run: |
+          mkdir -p security
+          printf '%s\n' "${{ secrets.VERIBIOTA_JWKS_JSON }}" > security/jwks.json
+          make sign-soft
 
       - name: Determinism (clone artifacts)
         run: cp -r build/artifacts build/artifacts.first
