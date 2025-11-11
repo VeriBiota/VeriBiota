@@ -31,6 +31,9 @@ structure ImportConfig where
   outDir : FilePath := "artifacts"
   emitConfirmed : Bool := false
   pretty : Bool := true
+  sigMode? : Option SignatureMode := none
+  signKey? : Option FilePath := none
+  signKid? : Option String := none
   deriving Inhabited
 
 def usage : String :=
@@ -56,6 +59,7 @@ def importUsage : String :=
   String.intercalate "\n"
     [ "Model import usage:"
     , "  veribiota import --in MODEL.json --emit-all [--out DIR] [--compact]"
+    , "    [--sig-mode MODE] [--sign-key PATH] [--sign-kid KID]"
     ]
 
 def verifyUsage : String :=
@@ -132,6 +136,23 @@ partial def parseImportArgsAux :
       Except.error "Missing path after --out"
   | cfg, "--compact" :: rest =>
       parseImportArgsAux { cfg with pretty := false } rest
+  | cfg, "--sig-mode" :: mode :: rest =>
+      match SignatureMode.ofString? mode with
+      | some sig => parseImportArgsAux { cfg with sigMode? := some sig } rest
+      | none => Except.error s!"Unknown signature mode '{mode}'"
+  | _, "--sig-mode" :: [] =>
+      Except.error "Missing value after --sig-mode"
+  | cfg, "--sign-key" :: path :: rest =>
+      parseImportArgsAux { cfg with signKey? := some (FilePath.mk path) } rest
+  | _, "--sign-key" :: [] =>
+      Except.error "Missing path after --sign-key"
+  | cfg, "--sign-kid" :: kid :: rest =>
+      if kid.trim.isEmpty then
+        Except.error "--sign-kid value cannot be empty"
+      else
+        parseImportArgsAux { cfg with signKid? := some kid } rest
+  | _, "--sign-kid" :: [] =>
+      Except.error "Missing value after --sign-kid"
   | cfg, arg :: rest =>
       if cfg.input?.isNone then
         parseImportArgsAux { cfg with input? := some (FilePath.mk arg) } rest
@@ -232,10 +253,53 @@ def runImport (cfg : ImportConfig) : IO UInt32 := do
       IO.eprintln s!"Model validation failed: {err}"
       return 1
   | Except.ok _ => pure ()
-  let target := cfg.outDir / "models" / s!"{spec.id}.json"
-  let doc ← Biosim.IO.Model.save target spec cfg.pretty
-  IO.println s!"Imported model '{spec.id}' → {target}"
-  IO.println s!"Model hash: {doc.hash}"
+  let sigEnv? ← IO.getEnv "VERIBIOTA_SIG_MODE"
+  let envMode? ←
+    match sigEnv? with
+    | none => pure none
+    | some raw =>
+        match SignatureMode.ofString? raw with
+        | some mode => pure (some mode)
+        | none => do
+            IO.eprintln s!"Ignoring unknown VERIBIOTA_SIG_MODE='{raw}'"
+            pure none
+  let chosenMode? :=
+    match cfg.sigMode? with
+    | some mode => some mode
+    | none => envMode?
+  let sigMode := chosenMode?.getD SignatureMode.unsigned
+  let envKey? ← IO.getEnv "VERIBIOTA_SIG_KEY"
+  let envKid? :=
+    match ← IO.getEnv "VERIBIOTA_SIG_KID" with
+    | some kid =>
+        if kid.trim.isEmpty then none else some kid
+    | none => none
+  let signKey? :=
+    match cfg.signKey? with
+    | some k => some k
+    | none => envKey?.map FilePath.mk
+  let signKid? :=
+    match cfg.signKid? with
+    | some kid => some kid
+    | none => envKid?
+  if sigMode.requiresSignature && signKey?.isNone then
+    IO.eprintln "Signature mode requires --sign-key (or VERIBIOTA_SIG_KEY)."
+    return 1
+  else if sigMode.requiresSignature && signKid?.isNone then
+    IO.eprintln "Signature mode requires --sign-kid (or VERIBIOTA_SIG_KID)."
+    return 1
+  let plan : SigningPlan :=
+    { mode := sigMode
+      , keyPath? := signKey?
+      , kid? := signKid? }
+  let paths := ArtifactPaths.fromRoot cfg.outDir spec.id
+  let result ← saveArtifacts paths plan cfg.pretty spec
+  IO.println s!"VeriBiota biosim toolkit v{toolkitVersion}"
+  IO.println s!"Model JSON: {result.model}"
+  IO.println s!"Certificate JSON: {result.certificate}"
+  IO.println s!"Checks JSON: {result.checks}"
+  IO.println s!"Checks digest: {result.checksDigest}"
+  printShaLines result
   return 0
 
 def verifyResults (checksPath resultsPath : FilePath) : IO UInt32 := do

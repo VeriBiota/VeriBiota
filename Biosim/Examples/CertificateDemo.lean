@@ -135,12 +135,13 @@ structure ArtifactPaths where
 
 namespace ArtifactPaths
 
-def fromRoot (root : FilePath) : ArtifactPaths :=
+def fromRoot (root : FilePath) (stem : String := "sir-demo") : ArtifactPaths :=
   let base := root.normalize
+  let file := s!"{stem}.json"
   { root := base
-    , model := base / "models" / "sir-demo.json"
-    , certificate := base / "certificates" / "sir-demo.json"
-    , checks := base / "checks" / "sir-demo.json" }
+    , model := base / "models" / file
+    , certificate := base / "certificates" / file
+    , checks := base / "checks" / file }
 
 def default : ArtifactPaths :=
   fromRoot "artifacts"
@@ -181,9 +182,10 @@ structure EmitResult where
   deriving Repr
 
 def saveArtifacts (paths : ArtifactPaths)
-    (plan : SigningPlan := {}) (pretty := true) :
+    (plan : SigningPlan := {}) (pretty := true)
+    (modelSpec : IO.Model.Spec := Biosim.Examples.Model.SIR.spec) :
     IO EmitResult := do
-  let modelDoc ← Model.save paths.model Model.SIR.spec pretty
+  let modelDoc ← Model.save paths.model modelSpec pretty
   let baseCert :=
     { (sirCertificate "0.2" "0.1" modelDoc.hash)
         with signature? := none }

@@ -23,6 +23,14 @@ def enabled (x : State S) (r : Reaction S) : Prop :=
 noncomputable def consume (x : State S) (inputs : State S) : State S :=
   Finsupp.zipWith Nat.sub (by simp) x inputs
 
+/-- Consuming then re-adding the inputs recovers the original state. -/
+lemma consume_add_inputs (x inputs : State S)
+    (h : ∀ s, inputs s ≤ x s) :
+    consume x inputs + inputs = x := by
+  classical
+  ext s
+  simp [consume, Finsupp.zipWith_apply, Nat.sub_add_cancel (h s)]
+
 /-- Apply a single reaction once. -/
 noncomputable def fire (x : State S) (r : Reaction S) (_h : enabled x r) : State S :=
   consume x r.inStoich + r.outStoich

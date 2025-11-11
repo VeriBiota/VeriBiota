@@ -52,6 +52,10 @@ BIOLEAN_SIG_MODE=signed-soft BIOLEAN_SIG_KID=veribiota-prod-2025-q1 \
 BIOLEAN_SIG_KEY="$(cat ~/veribiota-secrets/veribiota_ed25519.pem)" \
   make sign-soft
 make verify
+
+# Import a canonical model + emit bundle
+./veribiota import --in Biosim/Examples/Model/sir.model.json --emit-all \
+  --out build/artifacts
 ```
 
 See `docs/cli.md` for the full flag reference (`--emit-all`, `--canon`, `--checks-schema`, `verify results`, etc.).
@@ -99,6 +103,8 @@ Before tagging or shipping a bundle, run through `docs/qa_checklist.md`. It capt
 | Absorbing/extinction | Characterize states with zero enabled reactions; prove extinction for pure death. | Markov chain hitting probabilities, supermartingale arguments. |
 
 Reusable automation goal: `invariant_by_linear_form` tactic consumes stoichiometry matrix proofs and discharges conservation obligations.
+
+See `docs/invariants.md` for `Invariant.lin.auto` examples and invariant-preservation lemmas.
 
 ## 4. Project Layout
 

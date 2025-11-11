@@ -40,6 +40,13 @@ export BIOLEAN_SIG_MODE=signed-enforced
 ./veribiota --emit-all --out build/artifacts
 ```
 
+## Import external model → full bundle
+```bash
+./veribiota import --in Biosim/Examples/Model/sir.model.json \
+  --emit-all --out build/artifacts
+# honors --sig-mode / --sign-key / --sign-kid just like --emit-all
+```
+
 ## Verify Certificates & Checks
 ```bash
 # JWKS must contain public key w/ kid=veribiota-prod-2025-q1

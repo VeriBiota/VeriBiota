@@ -41,8 +41,33 @@ jobs:
       - name: Lean tests
         run: lake env lean Tests/Main.lean
 
+      - name: Docs & task cards
+        run: |
+          npm ci || true
+          [ -f docs/cli.md ]
+          [ -f docs/model-ir.md ]
+          [ -f docs/invariants.md ]
+          grep -q "docs/cli.md" README.md
+          grep -q "veribiota import" docs/cli.md
+
       - name: Emit artifacts
         run: make emit
+
+      - name: Import sample model and emit bundle
+        run: |
+          ./veribiota import --in Biosim/Examples/Model/sir.model.json \
+            --emit-all --out build/artifacts
+
+      - name: Canonicalize & validate schemas
+        run: |
+          ./veribiota --canon build/artifacts/checks/sir-demo.json \
+            --out build/artifacts/checks/sir-demo.json
+          ./veribiota --canon build/artifacts/certificates/sir-demo.json \
+            --out build/artifacts/certificates/sir-demo.json
+          npx --yes ajv-cli validate \
+            -s schema/biolean.checks.v1.json -d build/artifacts/checks/sir-demo.json
+          npx --yes ajv-cli validate \
+            -s schema/biolean.certificate.v1.json -d build/artifacts/certificates/sir-demo.json
 
       - name: Determinism (re-emit)
         run: |
@@ -79,14 +104,21 @@ jobs:
           ./veribiota --canon build/artifacts/checks/sir-demo.crlf.json --out build/artifacts/checks/sir-demo.canon.json
           diff -u build/artifacts/checks/sir-demo.json build/artifacts/checks/sir-demo.canon.json
 
-      - name: Schema validate
-        run: |
-          npx --yes ajv-cli validate -s schema/veribiota.checks.v1.json -d build/artifacts/checks/sir-demo.json
-          npx --yes ajv-cli validate -s schema/veribiota.certificate.v1.json -d build/artifacts/certificates/sir-demo.json
-
       - name: SHA capture
         run: |
           (sha256sum build/artifacts/models/*.json build/artifacts/certificates/*.json build/artifacts/checks/*.json) || (shasum -a 256 build/artifacts/models/*.json build/artifacts/certificates/*.json build/artifacts/checks/*.json)
+
+      - name: Tarball artifacts
+        if: github.ref == 'refs/heads/main'
+        run: |
+          tar -C build -czf artifacts.tgz artifacts
+
+      - name: Upload build artifacts
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: veribiota-artifacts
+          path: artifacts.tgz
 
   release:
     needs: build-test
