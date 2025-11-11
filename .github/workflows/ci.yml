@@ -73,29 +73,29 @@ jobs:
           pub_der="$(mktemp)"
           openssl pkey -in "$key_path" -pubout -outform DER -out "$pub_der"
           python3 - <<'PY' "$pub_der" security/jwks.json "$kid"
-import base64, json, sys
-from pathlib import Path
-der_path, jwks_path, kid = sys.argv[1:]
-prefix = bytes([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00])
-der = Path(der_path).read_bytes()
-if not der.startswith(prefix):
-    raise SystemExit("Unexpected Ed25519 DER header when deriving JWKS.")
-raw = der[len(prefix):]
-derived = base64.urlsafe_b64encode(raw).decode().rstrip("=")
-doc = json.loads(Path(jwks_path).read_text())
-target = None
-for key in doc.get("keys", []):
-    if key.get("kid") == kid:
-        target = key.get("x")
-        break
-if target is None:
-    raise SystemExit(f"JWKS is missing key id '{kid}'.")
-if derived != target:
-    raise SystemExit(
-        "VERIBIOTA_JWKS_JSON does not match the configured signing key. "
-        "Update the JWKS secret to the public key paired with VERIBIOTA_SIG_KEY."
-    )
-PY
+          import base64, json, sys
+          from pathlib import Path
+          der_path, jwks_path, kid = sys.argv[1:]
+          prefix = bytes([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00])
+          der = Path(der_path).read_bytes()
+          if not der.startswith(prefix):
+              raise SystemExit("Unexpected Ed25519 DER header when deriving JWKS.")
+          raw = der[len(prefix):]
+          derived = base64.urlsafe_b64encode(raw).decode().rstrip("=")
+          doc = json.loads(Path(jwks_path).read_text())
+          target = None
+          for key in doc.get("keys", []):
+              if key.get("kid") == kid:
+                  target = key.get("x")
+                  break
+          if target is None:
+              raise SystemExit(f"JWKS is missing key id '{kid}'.")
+          if derived != target:
+              raise SystemExit(
+                  "VERIBIOTA_JWKS_JSON does not match the configured signing key. "
+                  "Update the JWKS secret to the public key paired with VERIBIOTA_SIG_KEY."
+              )
+          PY
           rm -f "$pub_der"
           {
             echo "VERIBIOTA_SIG_KEY=$key_path"
@@ -223,29 +223,29 @@ PY
           pub_der="$(mktemp)"
           openssl pkey -in "$key_path" -pubout -outform DER -out "$pub_der"
           python3 - <<'PY' "$pub_der" security/jwks.json "$kid"
-import base64, json, sys
-from pathlib import Path
-der_path, jwks_path, kid = sys.argv[1:]
-prefix = bytes([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00])
-der = Path(der_path).read_bytes()
-if not der.startswith(prefix):
-    raise SystemExit("Unexpected Ed25519 DER header when deriving JWKS.")
-raw = der[len(prefix):]
-derived = base64.urlsafe_b64encode(raw).decode().rstrip("=")
-doc = json.loads(Path(jwks_path).read_text())
-target = None
-for key in doc.get("keys", []):
-    if key.get("kid") == kid:
-        target = key.get("x")
-        break
-if target is None:
-    raise SystemExit(f"JWKS is missing key id '{kid}'.")
-if derived != target:
-    raise SystemExit(
-        "VERIBIOTA_JWKS_JSON does not match the configured signing key. "
-        "Update the JWKS secret to the public key paired with VERIBIOTA_SIG_KEY."
-    )
-PY
+          import base64, json, sys
+          from pathlib import Path
+          der_path, jwks_path, kid = sys.argv[1:]
+          prefix = bytes([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00])
+          der = Path(der_path).read_bytes()
+          if not der.startswith(prefix):
+              raise SystemExit("Unexpected Ed25519 DER header when deriving JWKS.")
+          raw = der[len(prefix):]
+          derived = base64.urlsafe_b64encode(raw).decode().rstrip("=")
+          doc = json.loads(Path(jwks_path).read_text())
+          target = None
+          for key in doc.get("keys", []):
+              if key.get("kid") == kid:
+                  target = key.get("x")
+                  break
+          if target is None:
+              raise SystemExit(f"JWKS is missing key id '{kid}'.")
+          if derived != target:
+              raise SystemExit(
+                  "VERIBIOTA_JWKS_JSON does not match the configured signing key. "
+                  "Update the JWKS secret to the public key paired with VERIBIOTA_SIG_KEY."
+              )
+          PY
           rm -f "$pub_der"
           {
             echo "VERIBIOTA_SIG_KEY=$key_path"
