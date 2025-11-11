@@ -53,17 +53,17 @@ jobs:
       - name: Emit artifacts
         run: make emit
 
-      - name: Import sample model and emit bundle
-        run: |
-          ./veribiota import --in Biosim/Examples/Model/sir.model.json \
-            --emit-all --out build/artifacts
-
       - name: Determinism (re-emit)
         run: |
           cp -r build/artifacts build/artifacts.first
           make emit
           diff -u build/artifacts.first/checks/sir-demo.json build/artifacts/checks/sir-demo.json
           diff -u build/artifacts.first/certificates/sir-demo.json build/artifacts/certificates/sir-demo.json
+
+      - name: Import sample model (separate out dir)
+        run: |
+          ./veribiota import --in Biosim/Examples/Model/sir.model.json \
+            --emit-all --out build/imported
 
       - name: Canonicalize & validate schemas
         run: |
