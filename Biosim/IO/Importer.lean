@@ -1,8 +1,4 @@
 import Lean.Data.Json
-import Mathlib.Data.Finsupp.Basic
-import Biosim.Core.State
-import Biosim.Core.System
-import Biosim.Core.Reaction
 import Biosim.IO.Model
 import Biosim.IO.Shared
 
@@ -12,11 +8,6 @@ namespace Importer
 
 open Lean
 open Model
-open Core
-
-structure Config (S : Type u) where
-  decodeSpecies : String → Except String S
-  rateBuilder : RateSpec → Except String (State S → NNReal)
 
 namespace JsonHelpers
 
@@ -84,11 +75,14 @@ def fromJson (json : Json) : Except String Spec := do
   let modelJson ← json.getObjVal? "model"
   let id ← modelJson.getObjVal? "id" >>= Json.getStr?
   let speciesArr ← modelJson.getObjVal? "species" >>= Json.getArr?
-  let species ← speciesArr.data.toList.mapM Json.getStr?
+  let species ←
+    speciesArr.toList.mapM fun
+      | Json.str s => pure s
+      | _ => throw "Species entries must be strings"
   let params ← parseParamMap (modelJson.getObjValD "parameters")
   let reactionsJson ← modelJson.getObjVal? "reactions"
   let reactionsArr ← reactionsJson.getArr?
-  let reactions ← reactionsArr.data.toList.mapM parseReaction
+  let reactions ← reactionsArr.toList.mapM parseReaction
   let units? ←
     match (modelJson.getObjVal? "units") with
     | .ok Json.null => pure none
@@ -115,17 +109,17 @@ def fromFile (path : System.FilePath) : IO Spec := do
   | .error err =>
       throw <| IO.userError s!"Failed to parse model JSON ({path}): {err}"
 
-private def ensureSpecies (universe : List String) (name : String) :
+private def ensureSpecies (declared : List String) (name : String) :
     Except String Unit := do
-  if universe.contains name then
+  if declared.contains name then
     pure ()
   else
     throw s!"Unknown species '{name}'"
 
-private def validateStoich (universe : List String) (m : StoichMap) :
+private def validateStoich (declared : List String) (m : StoichMap) :
     Except String Unit :=
   m.toList.foldlM (init := ()) fun _ (name, _) =>
-    ensureSpecies universe name
+    ensureSpecies declared name
 
 private def validateRate (spec : Spec) : RateSpec → Except String Unit
   | .massAction k =>
@@ -144,30 +138,6 @@ def validate (spec : Spec) : Except String Unit := do
     validateStoich spec.species reaction.input
     validateStoich spec.species reaction.output
     validateRate spec reaction.rate
-
-private def stoichToState {S : Type u} [DecidableEq S]
-    (decode : String → Except String S) (m : StoichMap) :
-    Except String (State S) := do
-  let entries ← m.toList.foldlM (init := []) fun acc (name, coeff) => do
-    let species ← decode name
-    pure ((species, coeff) :: acc)
-  pure <|
-    entries.foldl (fun acc (species, coeff) =>
-      acc + Finsupp.single species coeff) (0 : State S)
-
-def toSystem {S : Type u} [DecidableEq S]
-    (cfg : Config S) (spec : Spec) :
-    Except String (System S) := do
-  let reactions ← spec.reactions.foldlM (init := []) fun acc reaction => do
-    let inputs ← stoichToState cfg.decodeSpecies reaction.input
-    let outputs ← stoichToState cfg.decodeSpecies reaction.output
-    let rate ← cfg.rateBuilder reaction.rate
-    let r : Reaction S :=
-      { inStoich := inputs
-        , outStoich := outputs
-        , rate }
-    pure (r :: acc)
-  pure { reactions := reactions.reverse }
 
 end Importer
 end IO

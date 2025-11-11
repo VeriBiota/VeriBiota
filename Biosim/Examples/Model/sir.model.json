@@ -1,0 +1,43 @@
+{
+  "schema": "veribiota.model.v1",
+  "canonicalization": {
+    "scheme": "veribiota-canon-v1",
+    "newlineTerminated": true
+  },
+  "meta": {
+    "toolchain": {
+      "lean": "4.9.0",
+      "mathlib": "v4.9.0"
+    },
+    "createdAt": "2025-11-11T00:00:00Z",
+    "createdBy": "sample-import"
+  },
+  "model": {
+    "id": "sir-demo",
+    "species": ["S", "I", "R"],
+    "parameters": {
+      "beta": 0.2,
+      "gamma": 0.1
+    },
+    "reactions": [
+      {
+        "name": "infect",
+        "in": { "S": 1, "I": 1 },
+        "out": { "I": 2 },
+        "rate": { "kind": "mass_action", "k": "beta" }
+      },
+      {
+        "name": "recover",
+        "in": { "I": 1 },
+        "out": { "R": 1 },
+        "rate": { "kind": "mass_action", "k": "gamma" }
+      }
+    ],
+    "units": {
+      "S": "count",
+      "I": "count",
+      "R": "count"
+    }
+  },
+  "hash": "sha256:pending"
+}

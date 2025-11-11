@@ -11,6 +11,7 @@ open Lean Parser Tactic Elab Tactic
 syntax (name := conservationAuto) "conservation_auto" : tactic
 syntax (name := invariantLinCmd) "Invariant.lin" : tactic
 syntax (name := invariantLinLegacyCmd) "invariant_lin" : tactic
+syntax (name := invariantLinAutoCmd) "Invariant.lin.auto" : tactic
 
 namespace Biosim
 namespace Tactics
@@ -34,6 +35,15 @@ namespace Invariant
 
 @[tactic invariantLinLegacyCmd] def evalInvariantLegacyAlias : Tactic :=
   evalConservationAuto
+
+@[tactic invariantLinAutoCmd] def evalInvariantAutoAlias : Tactic := fun stx => do
+  try
+    evalConservationAuto stx
+  catch _ =>
+    throwError "Invariant.lin.auto: unable to derive the conservation proof automatically. Provide explicit weights or simplify the stoichiometry."
+
+macro "Invariant.lin.auto" : tactic =>
+  `(tactic| conservation_auto)
 
 namespace Presets
 
