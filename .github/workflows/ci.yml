@@ -50,20 +50,46 @@ jobs:
           grep -q "docs/cli.md" README.md
           grep -q "veribiota import" docs/cli.md
 
-      - name: Emit artifacts
-        run: make emit
+      - name: Generate CI signing key
+        run: |
+          openssl genpkey -algorithm ed25519 -out ci_ed25519.pem
+          openssl pkey -in ci_ed25519.pem -pubout -outform DER -out ci_ed25519.der
+          python3 - <<'PY'
+import base64, json, pathlib
+from pathlib import Path
+
+der = Path("ci_ed25519.der").read_bytes()
+prefix = 12  # Ed25519 DER header length
+raw = der[prefix:]
+encoded = base64.urlsafe_b64encode(raw).decode().rstrip("=")
+jwk = {"keys": [{"kty": "OKP", "crv": "Ed25519", "kid": "veribiota-ci", "x": encoded}]}
+Path("security/jwks.ci.json").write_text(json.dumps(jwk))
+Path("security/jwks.json").write_text(json.dumps(jwk))
+PY
+
+      - name: Emit artifacts (signed-soft)
+        env:
+          VERIBIOTA_SIG_KEY: ${{ github.workspace }}/ci_ed25519.pem
+          VERIBIOTA_SIG_KID: veribiota-ci
+        run: make sign-soft
 
       - name: Determinism (re-emit)
         run: |
           cp -r build/artifacts build/artifacts.first
-          make emit
+          VERIBIOTA_SIG_KEY=${{ github.workspace }}/ci_ed25519.pem \
+          VERIBIOTA_SIG_KID=veribiota-ci \
+          make sign-soft
           diff -u build/artifacts.first/checks/sir-demo.json build/artifacts/checks/sir-demo.json
           diff -u build/artifacts.first/certificates/sir-demo.json build/artifacts/certificates/sir-demo.json
 
       - name: Import sample model (separate out dir)
+        env:
+          VERIBIOTA_SIG_KEY: ${{ github.workspace }}/ci_ed25519.pem
+          VERIBIOTA_SIG_KID: veribiota-ci
         run: |
           ./veribiota import --in Biosim/Examples/Model/sir.model.json \
-            --emit-all --out build/imported
+            --emit-all --out build/imported \
+            --sig-mode signed-soft --sign-key $VERIBIOTA_SIG_KEY --sign-kid $VERIBIOTA_SIG_KID
 
       - name: Canonicalize & validate schemas
         run: |
