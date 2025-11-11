@@ -1,0 +1,121 @@
+name: ci
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+
+jobs:
+  build-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain info
+        run: |
+          echo "Using OpenSSL:"
+          openssl version || true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install elan (Lean toolchain)
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
+            | sh -s -- -y --default-toolchain=$(cat lean-toolchain)
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: Fetch mathlib cache
+        run: |
+          lake update
+          lake exe cache get
+
+      - name: Build
+        run: lake build
+
+      - name: Lean tests
+        run: lake env lean Tests/Main.lean
+
+      - name: Emit artifacts
+        run: make emit
+
+      - name: Determinism (re-emit)
+        run: |
+          cp -r build/artifacts build/artifacts.first
+          make emit
+          diff -u build/artifacts.first/checks/sir-demo.json build/artifacts/checks/sir-demo.json
+          diff -u build/artifacts.first/certificates/sir-demo.json build/artifacts/certificates/sir-demo.json
+
+      - name: Tamper harness
+        run: |
+          set -euo pipefail
+          bash tests/scripts/tamper.sh build/artifacts/checks/sir-demo.json
+          set +e
+          ./veribiota verify checks build/artifacts/checks.flip_payload.json --jwks security/jwks.json --sig-mode signed-enforced
+          status=$?
+          set -e
+          if [[ $status -ne 3 ]]; then
+            echo "Expected exit code 3 for payload tamper, got $status" >&2
+            exit 1
+          fi
+          set +e
+          ./veribiota verify checks build/artifacts/checks.flip_sig.json --jwks security/jwks.json --sig-mode signed-enforced
+          status=$?
+          set -e
+          if [[ $status -ne 2 ]]; then
+            echo "Expected exit code 2 for signature tamper, got $status" >&2
+            exit 1
+          fi
+
+      - name: CRLF canonicalization
+        run: |
+          set -euo pipefail
+          awk 'sub("$","\r")' build/artifacts/checks/sir-demo.json > build/artifacts/checks/sir-demo.crlf.json
+          ./veribiota --canon build/artifacts/checks/sir-demo.crlf.json --out build/artifacts/checks/sir-demo.canon.json
+          diff -u build/artifacts/checks/sir-demo.json build/artifacts/checks/sir-demo.canon.json
+
+      - name: Schema validate
+        run: |
+          npx --yes ajv-cli validate -s schema/veribiota.checks.v1.json -d build/artifacts/checks/sir-demo.json
+          npx --yes ajv-cli validate -s schema/veribiota.certificate.v1.json -d build/artifacts/certificates/sir-demo.json
+
+      - name: SHA capture
+        run: |
+          (sha256sum build/artifacts/models/*.json build/artifacts/certificates/*.json build/artifacts/checks/*.json) || (shasum -a 256 build/artifacts/models/*.json build/artifacts/certificates/*.json build/artifacts/checks/*.json)
+
+  release:
+    needs: build-test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan (Lean toolchain)
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
+            | sh -s -- -y --default-toolchain=$(cat lean-toolchain)
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: Fetch mathlib cache
+        run: |
+          lake update
+          lake exe cache get
+
+      - name: Sign-soft & verify
+        env:
+          VERIBIOTA_SIG_KEY: ${{ secrets.VERIBIOTA_SIG_KEY }}
+          VERIBIOTA_SIG_KID: veribiota-prod-2025-q1
+          VERIBIOTA_SIG_MODE: signed-soft
+        run: |
+          make sign-soft verify
+          tar -czf artifacts.tgz build/artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          files: artifacts.tgz

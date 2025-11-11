@@ -1,0 +1,19 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"Agent Task Card",
+  "type":"object",
+  "required":["id","title","kind","outputs","acceptance","status"],
+  "properties":{
+    "id":{"type":"string","pattern":"^[a-z0-9_\\-]+$"},
+    "title":{"type":"string","minLength":3},
+    "kind":{"type":"string","enum":["code","test","perf","data","doc","ops"]},
+    "needs":{"type":"array","items":{"type":"string"}},
+    "inputs":{"type":"array","items":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}},
+    "outputs":{"type":"array","items":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}},
+    "acceptance":{"type":"object","required":["done_when"],"properties":{"done_when":{"type":"array","items":{"type":"string"}}}},
+    "tools_allowed":{"type":"array","items":{"type":"string"}},
+    "time_budget_minutes":{"type":"integer","minimum":1},
+    "token_budget":{"type":"integer","minimum":1000},
+    "status":{"type":"string","enum":["todo","in_progress","blocked","done"]}
+  }
+}
