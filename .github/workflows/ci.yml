@@ -100,7 +100,7 @@ jobs:
           set -euo pipefail
           bash tests/scripts/tamper.sh build/artifacts/checks/sir-demo.json
           set +e
-          ./veribiota verify checks build/artifacts/checks.flip_payload.json --jwks security/jwks.json --sig-mode signed-enforced
+          ./veribiota verify checks build/artifacts/checks/sir-demo.flip_payload.json --jwks security/jwks.json --sig-mode signed-enforced
           status=$?
           set -e
           if [[ $status -ne 3 ]]; then
@@ -108,7 +108,7 @@ jobs:
             exit 1
           fi
           set +e
-          ./veribiota verify checks build/artifacts/checks.flip_sig.json --jwks security/jwks.json --sig-mode signed-enforced
+          ./veribiota verify checks build/artifacts/checks/sir-demo.flip_sig.json --jwks security/jwks.json --sig-mode signed-enforced
           status=$?
           set -e
           if [[ $status -ne 2 ]]; then
