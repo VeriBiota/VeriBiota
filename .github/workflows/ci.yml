@@ -65,8 +65,10 @@ jobs:
           ./veribiota --canon build/artifacts/certificates/sir-demo.json \
             --out build/artifacts/certificates/sir-demo.json
           npx --yes ajv-cli validate \
+            --spec=draft7 --formats=ajv-formats \
             -s schema/biolean.checks.v1.json -d build/artifacts/checks/sir-demo.json
           npx --yes ajv-cli validate \
+            --spec=draft7 --formats=ajv-formats \
             -s schema/biolean.certificate.v1.json -d build/artifacts/certificates/sir-demo.json
 
       - name: Determinism (re-emit)
