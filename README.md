@@ -31,9 +31,9 @@ Set the mode via `--sig-mode` or `VERIBIOTA_SIG_MODE`. Signed modes also require
 
 The frozen schemas live at:
 
-- Checks: <https://veribiota.ai/schema/v1/checks.json>
-- Certificate: <https://veribiota.ai/schema/v1/certificate.json>
-- Model IR layout: `docs/model-ir.md`
+- Checks: <https://veribiota.ai/schema/v1/checks.json> (`schema/veribiota.checks.v1.json`)
+- Certificate: <https://veribiota.ai/schema/v1/certificate.json> (`schema/veribiota.certificate.v1.json`)
+- Model IR layout + canonical form: `docs/model-ir.md` (see `Biosim/Examples/Model/sir.model.json` for a complete sample)
 
 Artifacts conforming to schema v1 are valid for every pilot contract through **2025-Q1**. Version bumps will get new URLs (`/schema/v2/...`) and release tags.
 
@@ -59,6 +59,11 @@ make verify
 ```
 
 See `docs/cli.md` for the full flag reference (`--emit-all`, `--canon`, `--checks-schema`, `verify results`, etc.).
+
+### Model importer
+- Author or receive a `veribiota.model.v1` JSON (follow `docs/model-ir.md`).
+- Run `./veribiota import --in <model.json> --emit-all --out build/artifacts [--sig-mode …]`.
+- The CLI canonicalizes the model, emits certificates/checks alongside `.sha256` sidecars, and applies the same signing/verification plan as `--emit-all`.
 
 ## Engine integration handoff
 
