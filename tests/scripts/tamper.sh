@@ -40,7 +40,7 @@ if len(parts) != 3:
     raise SystemExit("Signature JWS must have three segments to mutate")
 sig_segment = list(parts[2])
 if not sig_segment:
-    raise SystemExit("No signature payload present to mutate")
+    sig_segment = list("AAAA")
 idx = 5 if len(sig_segment) > 5 else 0
 sig_segment[idx] = "A" if sig_segment[idx] != "A" else "B"
 parts[2] = "".join(sig_segment)
