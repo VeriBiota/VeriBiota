@@ -34,12 +34,17 @@ path = sys.argv[1]
 with open(path) as fh:
     data = json.load(fh)
 sig = data.get("signature", {})
-jws = list(sig.get("jws", ""))
-if not jws:
-    raise SystemExit("No signature present to mutate")
-idx = 5 if len(jws) > 5 else 0
-jws[idx] = "A" if jws[idx] != "A" else "B"
-sig["jws"] = "".join(jws)
+jws = sig.get("jws", "")
+parts = jws.split(".")
+if len(parts) != 3:
+    raise SystemExit("Signature JWS must have three segments to mutate")
+sig_segment = list(parts[2])
+if not sig_segment:
+    raise SystemExit("No signature payload present to mutate")
+idx = 5 if len(sig_segment) > 5 else 0
+sig_segment[idx] = "A" if sig_segment[idx] != "A" else "B"
+parts[2] = "".join(sig_segment)
+sig["jws"] = ".".join(parts)
 data["signature"] = sig
 with open(path, "w") as fh:
     json.dump(data, fh, separators=(',', ':'))
