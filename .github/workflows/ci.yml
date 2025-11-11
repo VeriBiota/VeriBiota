@@ -56,13 +56,17 @@ jobs:
           VERIBIOTA_SIG_KID: veribiota-prod-2025-q1
         run: make sign-soft
 
+      - name: Determinism (clone artifacts)
+        run: cp -r build/artifacts build/artifacts.first
+
       - name: Determinism (re-emit)
         env:
           VERIBIOTA_SIG_KEY: ${{ secrets.VERIBIOTA_SIG_KEY }}
           VERIBIOTA_SIG_KID: veribiota-prod-2025-q1
+        run: make sign-soft
+
+      - name: Determinism (diff)
         run: |
-          cp -r build/artifacts build/artifacts.first
-          make sign-soft
           diff -u build/artifacts.first/checks/sir-demo.json build/artifacts/checks/sir-demo.json
           diff -u build/artifacts.first/certificates/sir-demo.json build/artifacts/certificates/sir-demo.json
 
