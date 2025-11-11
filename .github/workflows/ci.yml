@@ -143,12 +143,12 @@ jobs:
           (sha256sum build/artifacts/models/*.json build/artifacts/certificates/*.json build/artifacts/checks/*.json) || (shasum -a 256 build/artifacts/models/*.json build/artifacts/certificates/*.json build/artifacts/checks/*.json)
 
       - name: Tarball artifacts
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && matrix.os == 'ubuntu-latest'
         run: |
           tar -C build -czf artifacts.tgz artifacts
 
       - name: Upload build artifacts
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: veribiota-artifacts
