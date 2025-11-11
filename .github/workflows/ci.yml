@@ -67,8 +67,10 @@ jobs:
 
       - name: Determinism (diff)
         run: |
-          diff -u build/artifacts.first/checks/sir-demo.json build/artifacts/checks/sir-demo.json
-          diff -u build/artifacts.first/certificates/sir-demo.json build/artifacts/certificates/sir-demo.json
+          diff -u <(jq -S 'del(.signature.issuedAt, .signature.jws)' build/artifacts.first/checks/sir-demo.json) \
+                  <(jq -S 'del(.signature.issuedAt, .signature.jws)' build/artifacts/checks/sir-demo.json)
+          diff -u <(jq -S 'del(.signature.issuedAt, .signature.jws)' build/artifacts.first/certificates/sir-demo.json) \
+                  <(jq -S 'del(.signature.issuedAt, .signature.jws)' build/artifacts/certificates/sir-demo.json)
 
       - name: Import sample model (separate out dir)
         env:
