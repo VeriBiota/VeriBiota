@@ -99,6 +99,10 @@ jobs:
         run: |
           set -euo pipefail
           bash tests/scripts/tamper.sh build/artifacts/checks/sir-demo.json
+          ./veribiota --canon build/artifacts/checks/sir-demo.flip_payload.json \
+            --out build/artifacts/checks/sir-demo.flip_payload.json
+          ./veribiota --canon build/artifacts/checks/sir-demo.flip_sig.json \
+            --out build/artifacts/checks/sir-demo.flip_sig.json
           set +e
           ./veribiota verify checks build/artifacts/checks/sir-demo.flip_payload.json --jwks security/jwks.json --sig-mode signed-enforced
           status=$?
