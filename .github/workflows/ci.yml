@@ -50,23 +50,37 @@ jobs:
           grep -q "docs/cli.md" README.md
           grep -q "veribiota import" docs/cli.md
 
-      - name: Emit artifacts (signed-soft)
+      - name: Prepare signing material
         env:
           VERIBIOTA_SIG_KEY: ${{ secrets.VERIBIOTA_SIG_KEY }}
-          VERIBIOTA_SIG_KID: veribiota-prod-2025-q1
           VERIBIOTA_JWKS_JSON: ${{ secrets.VERIBIOTA_JWKS_JSON }}
         run: |
+          set -euo pipefail
+          if [[ -z "${VERIBIOTA_SIG_KEY:-}" ]]; then
+            echo "VERIBIOTA_SIG_KEY secret is required to produce signed artifacts." >&2
+            exit 1
+          fi
+          if [[ -z "${VERIBIOTA_JWKS_JSON:-}" ]]; then
+            echo "VERIBIOTA_JWKS_JSON secret is required to verify signatures." >&2
+            exit 1
+          fi
           mkdir -p security
+          key_path="$PWD/security/ci_signing.key"
+          printf '%s\n' "$VERIBIOTA_SIG_KEY" > "$key_path"
+          chmod 600 "$key_path"
           printf '%s\n' "$VERIBIOTA_JWKS_JSON" > security/jwks.json
-          make sign-soft
+          {
+            echo "VERIBIOTA_SIG_KEY=$key_path"
+            echo "VERIBIOTA_SIG_KID=veribiota-prod-2025-q1"
+          } >> "$GITHUB_ENV"
+
+      - name: Emit artifacts (signed-soft)
+        run: make sign-soft
 
       - name: Determinism (clone artifacts)
         run: cp -r build/artifacts build/artifacts.first
 
       - name: Determinism (re-emit)
-        env:
-          VERIBIOTA_SIG_KEY: ${{ secrets.VERIBIOTA_SIG_KEY }}
-          VERIBIOTA_SIG_KID: veribiota-prod-2025-q1
         run: make sign-soft
 
       - name: Determinism (diff)
@@ -77,9 +91,6 @@ jobs:
                   <(jq -S 'del(.signature.issuedAt, .signature.jws)' build/artifacts/certificates/sir-demo.json)
 
       - name: Import sample model (separate out dir)
-        env:
-          VERIBIOTA_SIG_KEY: ${{ secrets.VERIBIOTA_SIG_KEY }}
-          VERIBIOTA_SIG_KID: veribiota-prod-2025-q1
         run: |
           ./veribiota import --in Biosim/Examples/Model/sir.model.json \
             --emit-all --out build/imported \
@@ -161,11 +172,32 @@ jobs:
           lake update
           lake exe cache get
 
-      - name: Sign-soft & verify
+      - name: Prepare signing material
         env:
           VERIBIOTA_SIG_KEY: ${{ secrets.VERIBIOTA_SIG_KEY }}
-          VERIBIOTA_SIG_KID: veribiota-prod-2025-q1
-          VERIBIOTA_SIG_MODE: signed-soft
+          VERIBIOTA_JWKS_JSON: ${{ secrets.VERIBIOTA_JWKS_JSON }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${VERIBIOTA_SIG_KEY:-}" ]]; then
+            echo "VERIBIOTA_SIG_KEY secret is required to ship signed releases." >&2
+            exit 1
+          fi
+          if [[ -z "${VERIBIOTA_JWKS_JSON:-}" ]]; then
+            echo "VERIBIOTA_JWKS_JSON secret is required to verify release signatures." >&2
+            exit 1
+          fi
+          mkdir -p security
+          key_path="$PWD/security/release_signing.key"
+          printf '%s\n' "$VERIBIOTA_SIG_KEY" > "$key_path"
+          chmod 600 "$key_path"
+          printf '%s\n' "$VERIBIOTA_JWKS_JSON" > security/jwks.json
+          {
+            echo "VERIBIOTA_SIG_KEY=$key_path"
+            echo "VERIBIOTA_SIG_KID=veribiota-prod-2025-q1"
+            echo "VERIBIOTA_SIG_MODE=signed-soft"
+          } >> "$GITHUB_ENV"
+
+      - name: Sign-soft & verify
         run: |
           make sign-soft verify
           tar -czf artifacts.tgz build/artifacts
