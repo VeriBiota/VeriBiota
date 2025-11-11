@@ -55,7 +55,7 @@ jobs:
           openssl genpkey -algorithm ed25519 -out ci_ed25519.pem
           openssl pkey -in ci_ed25519.pem -pubout -outform DER -out ci_ed25519.der
           python3 - <<'PY'
-import base64, json, pathlib
+import base64, json
 from pathlib import Path
 
 der = Path("ci_ed25519.der").read_bytes()
