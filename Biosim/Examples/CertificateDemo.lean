@@ -35,9 +35,12 @@ private def shellQuote (s : String) : String :=
 
 private def runOpensslSign (keyPath payloadPath : System.FilePath) :
     IO String := do
+  let opensslEnv ← IO.getEnv "VERIBIOTA_OPENSSL"
+  let opensslBin := opensslEnv.getD "openssl"
+  let opensslQuoted := shellQuote opensslBin
   let baseCmds :=
-    [ s!"set -o pipefail && openssl pkeyutl -sign -inkey {shellQuote keyPath.toString} -rawin -pkeyopt digest:none -in {shellQuote payloadPath.toString} | openssl base64 -A"
-    , s!"set -o pipefail && openssl pkeyutl -sign -inkey {shellQuote keyPath.toString} -rawin -in {shellQuote payloadPath.toString} | openssl base64 -A" ]
+    [ s!"set -o pipefail && {opensslQuoted} pkeyutl -sign -inkey {shellQuote keyPath.toString} -rawin -pkeyopt digest:none -in {shellQuote payloadPath.toString} | {opensslQuoted} base64 -A"
+    , s!"set -o pipefail && {opensslQuoted} pkeyutl -sign -inkey {shellQuote keyPath.toString} -rawin -in {shellQuote payloadPath.toString} | {opensslQuoted} base64 -A" ]
   let rec loop
       | [] =>
           throw <| IO.userError "Signing failed: openssl unavailable or unsupported Ed25519 configuration."

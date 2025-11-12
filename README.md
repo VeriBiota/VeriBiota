@@ -92,6 +92,12 @@ make sign-soft
 
 > **Tip:** `VERIBIOTA_SIG_KEY` may point to a key file or contain the raw PEM text. When the latter is detected, `scripts/sign_key_path.sh` will materialize a temporary file under `security/` and wire everything up automatically.
 
+> **macOS note:** Apple’s built-in LibreSSL lacks Ed25519 support. Install Homebrew’s OpenSSL 3 (`brew install openssl@3`) and point `VERIBIOTA_OPENSSL` at it:
+> ```bash
+> export VERIBIOTA_OPENSSL="$(brew --prefix openssl@3)/bin/openssl"
+> ```
+> The signing helper uses `VERIBIOTA_OPENSSL` whenever it is present.
+
 Docs: [`docs/cli.md`](docs/cli.md) · [`docs/model-ir.md`](docs/model-ir.md)
 
 ---
