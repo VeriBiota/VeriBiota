@@ -1,0 +1,130 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain info
+        run: |
+          echo "Using OpenSSL:"
+          openssl version || true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install OpenSSL 3 (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install openssl@3
+          echo "/opt/homebrew/opt/openssl@3/bin" >> $GITHUB_PATH
+
+      - name: Configure OpenSSL path
+        run: |
+          set -euo pipefail
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            OPENSSL_BIN="/opt/homebrew/opt/openssl@3/bin/openssl"
+          else
+            OPENSSL_BIN="$(command -v openssl)"
+          fi
+          if [[ ! -x "$OPENSSL_BIN" ]]; then
+            echo "Unable to locate openssl binary" >&2
+            exit 1
+          fi
+          echo "VERIBIOTA_OPENSSL=$OPENSSL_BIN" >> $GITHUB_ENV
+
+      - name: Install elan (Lean toolchain)
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
+            | sh -s -- -y --default-toolchain=$(cat lean-toolchain)
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: Fetch mathlib cache
+        run: |
+          lake update
+          lake exe cache get
+
+      - name: Build
+        run: lake build
+
+      - name: Prepare signing material
+        if: ${{ secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
+        env:
+          VERIBIOTA_SIG_KEY: ${{ secrets.VERIBIOTA_SIG_KEY }}
+          VERIBIOTA_JWKS_JSON: ${{ secrets.VERIBIOTA_JWKS_JSON }}
+        run: |
+          set -euo pipefail
+          mkdir -p security
+          key_path="$PWD/security/release_signing.key"
+          kid="veribiota-prod-2025-q1"
+          printf '%s\n' "$VERIBIOTA_SIG_KEY" > "$key_path"
+          chmod 600 "$key_path"
+          printf '%s\n' "$VERIBIOTA_JWKS_JSON" > security/jwks.json
+          pub_der="$(mktemp)"
+          openssl pkey -in "$key_path" -pubout -outform DER -out "$pub_der"
+          python3 - <<'PY' "$pub_der" security/jwks.json "$kid"
+          import base64, json, sys
+          from pathlib import Path
+          der_path, jwks_path, kid = sys.argv[1:]
+          prefix = bytes([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00])
+          der = Path(der_path).read_bytes()
+          if not der.startswith(prefix):
+              raise SystemExit("Unexpected Ed25519 DER header when deriving JWKS.")
+          raw = der[len(prefix):]
+          derived = base64.urlsafe_b64encode(raw).decode().rstrip("=")
+          doc = json.loads(Path(jwks_path).read_text())
+          target = None
+          for key in doc.get("keys", []):
+              if key.get("kid") == kid:
+                  target = key.get("x")
+                  break
+          if target is None:
+              raise SystemExit(f"JWKS is missing key id '{kid}'.")
+          if derived != target:
+              raise SystemExit(
+                  "VERIBIOTA_JWKS_JSON does not match the configured signing key. "
+                  "Update the JWKS secret to the public key paired with VERIBIOTA_SIG_KEY."
+              )
+          PY
+          rm -f "$pub_der"
+          {
+            echo "VERIBIOTA_SIG_KEY=$key_path"
+            echo "VERIBIOTA_SIG_KID=$kid"
+          } >> "$GITHUB_ENV"
+
+      - name: Emit artifacts (signed if secrets present)
+        run: |
+          set -euo pipefail
+          if [[ -n "${VERIBIOTA_SIG_KEY:-}" ]]; then
+            make sign-soft
+          else
+            make emit
+          fi
+
+      - name: Create tarball
+        run: |
+          tar -C build -czf artifacts.tgz artifacts
+          ls -lh artifacts.tgz
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts.tgz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

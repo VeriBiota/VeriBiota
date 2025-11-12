@@ -1,10 +1,11 @@
 {
+  "_comment": "Sample JWKS. For local development, generate your own Ed25519 key and JWKS as shown in docs/getting-started.md.",
   "keys": [
     {
       "kty": "OKP",
       "crv": "Ed25519",
-      "kid": "veribiota-dev-sample",
-      "x": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      "kid": "local-sample",
+      "x": "REPLACE_WITH_BASE64URL_PUBLIC_KEY"
     }
   ]
 }
