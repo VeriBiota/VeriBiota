@@ -33,3 +33,7 @@
   --md-typeset-a-color: #BFA8E8;            /* link color in dark mode */
 }
 
+/* Hide duplicate site name in header (keep current page title) */
+.md-header__title .md-header__ellipsis > .md-header__topic:first-child {
+  display: none;
+}
