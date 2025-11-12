@@ -146,7 +146,8 @@ model.json → certificate.json → checks.json → signature → JWKS
 
 ## ⚖️ License
 - Open-core components (Lean proofs, CLI, schemas) — **Apache 2.0**  
-- Enterprise runtime, signer, and audit modules — **Commercial license**
+- Enterprise runtime, signer, and audit modules — **Commercial license**  
+- See `LICENSE` and `NOTICE` for terms and attribution
 
 ---
 

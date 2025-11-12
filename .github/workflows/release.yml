@@ -125,6 +125,7 @@ jobs:
           prerelease: false
           files: |
             artifacts.tgz
+            LICENSE
+            NOTICE
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
