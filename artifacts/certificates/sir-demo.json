@@ -1,0 +1,46 @@
+{"toolchain":
+ {"tacticLib":
+  "Invariant.lin@0.1",
+  "mathlib":
+  "v4.9.0",
+  "lean":
+  "4.9.0"},
+ "timestamp":
+ "2026-01-01T00:00:00Z",
+ "theorems":
+ [{"statement":
+   "totalPopulationInv conserved by infection",
+   "proofId":
+   "Biosim.Examples.SIR.infection_preserves_total",
+   "name":
+   "infection_preserves_total"},
+  {"statement":
+   "totalPopulationInv conserved by recovery",
+   "proofId":
+   "Biosim.Examples.SIR.recovery_preserves_total",
+   "name":
+   "recovery_preserves_total"}],
+ "semantics":
+ ["CTMC",
+  "ODE"],
+ "schema":
+ "veribiota.certificate.v1",
+ "parameters":
+ {"gamma":
+  "0.1",
+  "beta":
+  "0.2"},
+ "modelId":
+ "sir-demo",
+ "modelHash":
+ "sha256:8b672eaf2c907a67080bea885891570c5447a1dde8485cf9824905821da188a1",
+ "limits":
+ {"domain":
+  "counts",
+  "assumptions":
+  ["rates ≥ 0"]},
+ "canonicalization":
+ {"scheme":
+  "veribiota-canon-v1",
+  "newlineTerminated":
+  true}}

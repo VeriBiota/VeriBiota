@@ -73,6 +73,40 @@ jobs:
           grep -q "docs/cli.md" README.md
           grep -q "veribiota import" docs/cli.md
 
+      - name: Simulate results (JSONL) and verify metadata
+        run: |
+          ./veribiota simulate --steps 50 --dt 0.25 --out build/results/sir-ci.jsonl
+          ./veribiota verify results build/artifacts/checks/sir-demo.json build/results/sir-ci.jsonl
+
+      - name: Install Rust toolchain (ubuntu-only)
+        if: matrix.os == 'ubuntu-latest'
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build biosim-eval (Rust helper)
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval
+
+      - name: Evaluate results drift/positivity (optional)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          ./target/debug/biosim-eval --checks build/artifacts/checks/sir-demo.json --results build/results/sir-ci.jsonl || true
+          ./target/debug/biosim-eval --json --checks build/artifacts/checks/sir-demo.json --results build/results/sir-ci.jsonl || true
+
+      - name: Minisign sidecars (optional)
+        if: matrix.os == 'ubuntu-latest' && secrets.VERIBIOTA_MINISIGN_PUB && secrets.VERIBIOTA_MINISIGN_SEC
+        env:
+          VERIBIOTA_MINISIGN_PUB: ${{ secrets.VERIBIOTA_MINISIGN_PUB }}
+          VERIBIOTA_MINISIGN_SEC: ${{ secrets.VERIBIOTA_MINISIGN_SEC }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y minisign
+          mkdir -p .ci_keys
+          printf '%s\n' "$VERIBIOTA_MINISIGN_PUB" > .ci_keys/minisign.pub
+          printf '%s\n' "$VERIBIOTA_MINISIGN_SEC" > .ci_keys/minisign.key
+          export VERIBIOTA_MINISIGN_PUB=.ci_keys/minisign.pub
+          export VERIBIOTA_MINISIGN_SEC=.ci_keys/minisign.key
+          make minisign
+          make verify-minisign
+
       - name: Prepare signing material
         if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
         env:

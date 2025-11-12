@@ -54,6 +54,15 @@ Any deviation (bad hash, missing newline, header mismatch) produces exit code `4
 (`canonical mismatch`). Signature failures use exit code `2`, while missing signatures in enforced
 mode use exit code `5`.
 
+## Signing enforcement
+
+The emitter refuses to sign if canonicalization metadata is missing or mismatched:
+
+- Payload `canonicalization.scheme` must be `veribiota-canon-v1`.
+- Payload must be newline-terminated (`newlineTerminated: true`) and end with a single `\n`.
+- The signature header embeds `veribiotaCanon` which must match the payload scheme.
+- CI preflight (`scripts/sign_preflight.sh`) validates that existing artifacts advertise the canonicalization policy before signing and that JWKS matches the configured private key.
+
 ## Determinism quick-check
 
 ```bash

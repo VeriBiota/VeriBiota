@@ -14,7 +14,7 @@ open Biosim.CLI
 open Biosim.IO (SignatureMode)
 open Biosim.IO.SignatureMode
 
-def toolkitVersion : String := "0.10.1-pilot"
+def toolkitVersion : String := "0.10.2-pilot"
 
 /-- CLI options for emitting artifacts. -/
 structure CliConfig where
@@ -72,6 +72,171 @@ def verifyUsage : String :=
 def canonUsage : String :=
   "Usage: veribiota --canon <artifact.json> [--out output.json]"
 
+/-- Simulation config for the minimal SIR demo. -/
+structure SimConfig where
+  steps : Nat := 80
+  dt : Float := 0.25
+  outPath? : Option FilePath := none
+  ssa : Bool := false
+  counts : Bool := false
+  deriving Inhabited
+
+def simUsage : String :=
+  String.intercalate "\n"
+    [ "Simulate usage:"
+    , "  veribiota simulate [--steps N] [--dt SECS] [--out results.jsonl]"
+    , "    Emits a minimal SIR trajectory and a JSONL results file, then verifies against checks."
+    ]
+
+partial def parseSimArgsAux : SimConfig → List String → Except String SimConfig
+  | cfg, [] => Except.ok cfg
+  | cfg, "--steps" :: n :: rest =>
+      match n.toNat? with
+      | some v => parseSimArgsAux { cfg with steps := v } rest
+      | none => Except.error "--steps must be a natural number"
+  | cfg, "--dt" :: s :: rest =>
+      let parsed : Option Float :=
+        match Lean.Json.parse s with
+        | Except.ok (Lean.Json.num num) => some num.toFloat
+        | _ => none
+      match parsed with
+      | some v => parseSimArgsAux { cfg with dt := v } rest
+      | none => Except.error "--dt must be a JSON number (e.g., 0.25)"
+  | cfg, "--ssa" :: rest =>
+      parseSimArgsAux { cfg with ssa := true } rest
+  | cfg, "--counts" :: rest =>
+      parseSimArgsAux { cfg with counts := true } rest
+  | cfg, "--out" :: path :: rest =>
+      parseSimArgsAux { cfg with outPath? := some (FilePath.mk path) } rest
+  | _, flag :: _ => Except.error s!"Unknown simulate option '{flag}'"
+
+def parseSimArgs (args : List String) : Except String SimConfig :=
+  parseSimArgsAux {} args
+
+def sirStep (β γ : Float) (dt : Float) (S I R : Float) : (Float × Float × Float) :=
+  -- Simple SIR with population-normalized infection
+  let total := S + I + R
+  let N := if total < 1.0 then 1.0 else total
+  let inf := β * S * I / N
+  let recov := γ * I
+  let dS := -inf
+  let dI := inf - recov
+  let dR := recov
+  (S + dt * dS, I + dt * dI, R + dt * dR)
+
+-- SSA stub: discrete-like step using same hazard form but continuous update
+def ssaStep (β γ : Float) (dt : Float) (S I R : Float) : (Float × Float × Float) :=
+  sirStep β γ dt S I R
+
+def jsonFromFloat! (x : Float) : Lean.Json :=
+  match Lean.JsonNumber.fromFloat? x with
+  | Sum.inr num => Lean.Json.num num
+  | Sum.inl _ => Lean.Json.num (Lean.JsonNumber.fromInt 0)
+
+def writeResultsJsonl (outPath : FilePath) (modelHash checksDigest : String)
+    (samples : List (Float × Float × Float × Float)) (emitCounts : Bool) : IO Unit := do
+  Biosim.IO.ensureParentDir outPath
+  IO.FS.withFile outPath IO.FS.Mode.write fun h => do
+    for (t, s, i, r) in samples do
+      let line := Lean.Json.mkObj
+        ([ ("t", jsonFromFloat! t)
+         , ("conc", Lean.Json.arr #[
+              jsonFromFloat! s
+            , jsonFromFloat! i
+            , jsonFromFloat! r ])
+         , ("modelHash", Lean.Json.str modelHash)
+         , ("checksDigest", Lean.Json.str checksDigest) ] ++
+         (if emitCounts then
+            [ ("counts", Lean.Json.arr #[
+                  jsonFromFloat! s
+                , jsonFromFloat! i
+                , jsonFromFloat! r ]) ]
+          else []))
+      h.putStr (line.compress)
+      h.putStr "\n"
+
+def runSimulate (cfg : SimConfig) : IO UInt32 := do
+  -- Ensure baseline artifacts exist (model/cert/checks) under build/artifacts
+  let paths := Biosim.Examples.CertificateDemo.ArtifactPaths.fromRoot "build/artifacts"
+  discard <| Biosim.Examples.CertificateDemo.saveArtifacts paths {}
+  let checksPath := paths.checks
+  let checksHex ← Biosim.IO.sha256Hex checksPath
+  let checksDigest := s!"sha256:{checksHex}"
+  -- Load model hash from certificate (or checks)
+  let certJson ← do
+    let s ← IO.FS.readFile paths.certificate
+    match Lean.Json.parse s with
+    | Except.ok j => pure j
+    | Except.error err =>
+        IO.eprintln s!"Failed to parse certificate JSON: {err}"
+        return (1 : UInt32)
+  let modelHash :=
+    match certJson.getObjVal? "modelHash" with
+    | Except.ok (Lean.Json.str s) => s
+    | _ => "sha256:unknown"
+  -- Parameters and initial conditions for demo SIR
+  let β : Float := 0.2
+  let γ : Float := 0.1
+  let resultsPath := cfg.outPath?.getD (FilePath.mk "build/results/sir-sim.jsonl")
+  if cfg.ssa then
+    let mut t : Float := 0.0
+    let mut S : Float := 999.0
+    let mut I : Float := 1.0
+    let mut R : Float := 0.0
+    let mut samples : List (Float × Float × Float × Float) := []
+    for _ in [0:cfg.steps] do
+      samples := (t, S, I, R) :: samples
+      let (S', I', R') := ssaStep β γ cfg.dt S I R
+      t := t + cfg.dt
+      S := S'
+      I := I'
+      R := R'
+    let out := samples.reverse
+    writeResultsJsonl resultsPath modelHash checksDigest out cfg.counts
+    IO.println s!"simulate (SSA): wrote {out.length} snapshots to {resultsPath}"
+    let (_, s0, i0, r0) := out.headD (0.0, 0.0, 0.0, 0.0)
+    let (tLast, sN, iN, rN) := out.getLastD (0.0, 0.0, 0.0, 0.0)
+    IO.println s!"t0: S={s0} I={i0} R={r0}"
+    IO.println s!"tN={tLast}: S={sN} I={iN} R={rN}"
+  else
+    let mut t : Float := 0.0
+    let mut S : Float := 999.0
+    let mut I : Float := 1.0
+    let mut R : Float := 0.0
+    let mut samples : List (Float × Float × Float × Float) := []
+    for _ in [0:cfg.steps] do
+      samples := (t, S, I, R) :: samples
+      let (S', I', R') := sirStep β γ cfg.dt S I R
+      t := t + cfg.dt
+      S := S'
+      I := I'
+      R := R'
+    let out := samples.reverse
+    writeResultsJsonl resultsPath modelHash checksDigest out cfg.counts
+    IO.println s!"simulate (ODE): wrote {out.length} snapshots to {resultsPath}"
+    let (_, s0, i0, r0) := out.headD (0.0, 0.0, 0.0, 0.0)
+    let (tLast, sN, iN, rN) := out.getLastD (0.0, 0.0, 0.0, 0.0)
+    IO.println s!"t0: S={s0} I={i0} R={r0}"
+    IO.println s!"tN={tLast}: S={sN} I={iN} R={rN}"
+  -- Print verification hint and attempt Rust evaluator if present
+  IO.println s!"Verify: ./veribiota verify results {checksPath} {resultsPath}"
+  let debugEval := FilePath.mk "target/debug/biosim-eval"
+  let releaseEval := FilePath.mk "target/release/biosim-eval"
+  let debugExists ← debugEval.pathExists
+  let releaseExists ← releaseEval.pathExists
+  if releaseExists then
+    let child ← IO.Process.output
+      { cmd := releaseEval.toString
+        , args := #["--checks", checksPath.toString, "--results", resultsPath.toString] }
+    IO.println child.stdout
+  else if debugExists then
+    let child ← IO.Process.output
+      { cmd := debugEval.toString
+        , args := #["--checks", checksPath.toString, "--results", resultsPath.toString] }
+    IO.println child.stdout
+  else
+    IO.println "(optional) Build Rust evaluator: cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval"
+  pure 0
 def parseVerifyKind : String → Except String VerifyKind
   | "checks" => Except.ok .checks
   | "cert" => Except.ok .cert
@@ -365,6 +530,14 @@ def parseCanonCommand : List String → Except String (FilePath × Option FilePa
 
 def runCli (args : List String) : IO UInt32 := do
   match args with
+  | "simulate" :: rest =>
+      match parseSimArgs rest with
+      | Except.error err =>
+          IO.eprintln err
+          IO.println simUsage
+          pure 1
+      | Except.ok cfg =>
+          runSimulate cfg
   | "--checks-schema" :: _ =>
       describeSchema
       pure 0

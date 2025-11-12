@@ -62,3 +62,23 @@ export VERIBIOTA_SIG_MODE=signed-enforced
 ./veribiota verify results build/artifacts/checks/sir-demo.json results.jsonl \
   --jwks security/jwks.json --print-details
 ```
+
+## Simulate (demo)
+```bash
+# Generate a small SIR trajectory (JSONL) and verify metadata
+./veribiota simulate --steps 50 --dt 0.25 --out build/results/sir-sim.jsonl
+./veribiota verify results build/artifacts/checks/sir-demo.json build/results/sir-sim.jsonl
+
+# SSA-like trajectory (stubbed) instead of ODE stepping
+./veribiota simulate --ssa --steps 50 --dt 0.25 --out build/results/sir-ssa.jsonl
+./veribiota verify results build/artifacts/checks/sir-demo.json build/results/sir-ssa.jsonl
+
+# Optional: evaluate drift/positivity with Rust helper (if built)
+cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval
+./target/debug/biosim-eval --checks build/artifacts/checks/sir-demo.json --results build/results/sir-sim.jsonl
+./target/debug/biosim-eval --json --checks build/artifacts/checks/sir-demo.json --results build/results/sir-sim.jsonl
+
+# Makefile shortcuts
+make simulate   # emit ODE trajectory + verify metadata
+make eval       # build biosim-eval and print text + JSON summaries
+```

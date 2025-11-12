@@ -1,7 +1,10 @@
-# 🧬 VeriBiota  
+# 🧬 VeriBiota™  
 **Mathematically Proven Biology™** · [Docs Site](https://veribiota.github.io/VeriBiota/)
 
 [![Docs](https://img.shields.io/badge/docs-MkDocs%20Material-7A6BB2)](https://veribiota.github.io/VeriBiota/)
+
+Schemas: `veribiota.model.v1` · `veribiota.checks.v1` · `veribiota.certificate.v1`  
+Canon: `veribiota-canon-v1`
 
 VeriBiota transforms biological and biochemical models into cryptographically signed, formally verified artifacts. Every reaction, rate law, and invariant is backed by theorem-proven logic and a reproducible audit trail—turning biological simulation into a compliance-grade science.
 
@@ -122,6 +125,7 @@ model.json → certificate.json → checks.json → signature → JWKS
 - Canonicalization: `veribiota-canon-v1` (UTF-8, sorted fields, trailing newline)  
 - Digital signatures: Ed25519 (`signature.jws`) + JWKS registry (`security/jwks.json`)  
 - Tamper harness + schema validation baked into CI (`.github/workflows/ci.yml`)  
+- CI simulates results and (on Ubuntu) optionally evaluates drift/positivity via `biosim-eval`  
 - Ready for 21 CFR Part 11 / SOC 2 audit trails
 
 ---
@@ -154,3 +158,38 @@ model.json → certificate.json → checks.json → signature → JWKS
 ## 🏁 Tagline
 **VeriBiota — Mathematically Proven Biology™**  
 *Where every model is reproducible, provable, and trusted.*
+
+---
+
+## 📦 Releases
+
+We publish two tarballs on every `v*` tag:
+
+- `artifacts.tgz` — canonical model/certificate/checks from `build/artifacts/`
+- `pilot-demo-v1-artifacts.tgz` — frozen pilot bundle under `releases/pilot-demo-v1/build/artifacts/`
+
+Tag to release:
+```bash
+git tag v0.10.2-pilot
+git push origin v0.10.2-pilot
+```
+
+The release workflow builds, (optionally) signs with `VERIBIOTA_SIG_KEY`/`VERIBIOTA_JWKS_JSON`, and uploads both tarballs along with `LICENSE` and `NOTICE`.
+
+---
+
+### Minisign sidecars (optional)
+For Unix-friendly detached signatures, you can create `*.minisig` next to each JSON. These sign the same canonical bytes used for JWS.
+
+```bash
+# Sign (assumes VERIBIOTA_MINISIGN_SEC points to your .key)
+make minisign
+
+# Verify (assumes VERIBIOTA_MINISIGN_PUB points to your .pub)
+make verify-minisign
+```
+
+Notes:
+- Canonical bytes: the signer script canonizes first (LF + trailing newline, sorted) and signs the `.canon.json` content.
+- Key storage: do not commit keys. Use `~/veribiota-secrets/` locally; CI uses GitHub Secrets.
+- Cross‑platform: minisign isn’t installed on Windows by default; keep it optional. Primary JWS/JWKS remains the source of truth.
