@@ -36,8 +36,8 @@ private def shellQuote (s : String) : String :=
 private def runOpensslSign (keyPath payloadPath : System.FilePath) :
     IO String := do
   let baseCmds :=
-    [ s!"openssl pkeyutl -sign -inkey {shellQuote keyPath.toString} -rawin -pkeyopt digest:none -in {shellQuote payloadPath.toString} | openssl base64 -A"
-    , s!"openssl pkeyutl -sign -inkey {shellQuote keyPath.toString} -rawin -in {shellQuote payloadPath.toString} | openssl base64 -A" ]
+    [ s!"set -o pipefail && openssl pkeyutl -sign -inkey {shellQuote keyPath.toString} -rawin -pkeyopt digest:none -in {shellQuote payloadPath.toString} | openssl base64 -A"
+    , s!"set -o pipefail && openssl pkeyutl -sign -inkey {shellQuote keyPath.toString} -rawin -in {shellQuote payloadPath.toString} | openssl base64 -A" ]
   let rec loop
       | [] =>
           throw <| IO.userError "Signing failed: openssl unavailable or unsupported Ed25519 configuration."

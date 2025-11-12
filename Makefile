@@ -11,9 +11,11 @@ emit:
 	sha256sum $(MODEL) $(CERT) $(CHECKS)
 
 sign-soft:
-	VERIBIOTA_SIG_MODE=signed-soft ./veribiota --emit-all --out $(ART) \
-	  --sign-key "$$VERIBIOTA_SIG_KEY" --sign-kid "$$VERIBIOTA_SIG_KID"
-	sha256sum $(MODEL) $(CERT) $(CHECKS)
+	@KEY_PATH=$$(./scripts/sign_key_path.sh) && \
+	  VERIBIOTA_SIG_KEY="$$KEY_PATH" ./scripts/sign_preflight.sh && \
+	  VERIBIOTA_SIG_MODE=signed-soft VERIBIOTA_SIG_KEY="$$KEY_PATH" ./veribiota --emit-all --out $(ART) \
+	    --sign-key "$$KEY_PATH" --sign-kid "$$VERIBIOTA_SIG_KID" && \
+	  sha256sum $(MODEL) $(CERT) $(CHECKS)
 
 verify:
 	./scripts/dev_jwks.sh

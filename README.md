@@ -66,6 +66,32 @@ lake update && lake build
   --jwks security/jwks.json --print-details
 ```
 
+### Local signing quickstart
+
+Leverage the new signing preflight guard to try the full signature round-trip with a disposable key:
+
+```bash
+openssl genpkey -algorithm ed25519 -out security/local-signing.key
+export VERIBIOTA_SIG_MODE=signed-soft
+export VERIBIOTA_SIG_KEY="$PWD/security/local-signing.key"
+export VERIBIOTA_SIG_KID="local-test"
+
+# derive the JWKS from the private key
+X="$(
+  openssl pkey -in "$VERIBIOTA_SIG_KEY" -pubout -outform DER \
+  | tail -c 32 \
+  | python3 -c 'import sys,base64;print(base64.urlsafe_b64encode(sys.stdin.buffer.read()).decode().rstrip("="))'
+)"
+jq -n --arg x "$X" --arg kid "$VERIBIOTA_SIG_KID" \
+  '{keys:[{kty:"OKP",crv:"Ed25519",kid:$kid,x:$x}]}' > security/jwks.json
+
+make sign-soft
+```
+
+`make sign-soft` now starts by running `scripts/sign_preflight.sh`, which verifies that the JWKS entry matches the private key and that any existing artifacts still advertise the canonicalization policy. If the preflight passes, the target re-emits the artifacts, signs them, prints SHA-256 digests, and immediately re-verifies the signatures.
+
+> **Tip:** `VERIBIOTA_SIG_KEY` may point to a key file or contain the raw PEM text. When the latter is detected, `scripts/sign_key_path.sh` will materialize a temporary file under `security/` and wire everything up automatically.
+
 Docs: [`docs/cli.md`](docs/cli.md) · [`docs/model-ir.md`](docs/model-ir.md)
 
 ---

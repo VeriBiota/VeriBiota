@@ -5,3 +5,4 @@ node_modules/
 *.tmp
 .DS_Store
 security/jwks.json
+security/.veribiota_signing.key
