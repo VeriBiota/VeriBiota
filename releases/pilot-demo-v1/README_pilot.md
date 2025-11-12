@@ -6,19 +6,44 @@ This folder is the exact bundle we send to pilot customers. It contains:
 - `jwks.sample.json` – sample public key document for signature verification drills.
 - `Makefile` + `scripts/pilot_demo.sh` – frozen helpers that run the emit → sign-soft → verify workflow.
 
-## Quick start
+## Verification cookbook (1‑pager)
 
+Run from repository root. Artifacts land in `build/artifacts/`.
+
+1) Emit and sign (soft):
 ```bash
-$ make pilot-demo
+VERIBIOTA_SIG_MODE=signed-soft \
+VERIBIOTA_SIG_KEY=/path/to/ed25519.pem \
+VERIBIOTA_SIG_KID=veribiota-prod-2025-q1 \
+  ./veribiota --emit-all --out build/artifacts \
+    --sign-key "$VERIBIOTA_SIG_KEY" --sign-kid "$VERIBIOTA_SIG_KID"
 ```
 
-That command:
+2) Verify checks and certificate:
+```bash
+./veribiota verify checks build/artifacts/checks/sir-demo.json \
+  --jwks security/jwks.json --print-details
+./veribiota verify cert   build/artifacts/certificates/sir-demo.json \
+  --jwks security/jwks.json --print-details
+```
 
-1. Emits a fresh model / certificate / checks bundle.
-2. Signs them in `signed-soft` mode (cached JWKS sample).
-3. Runs `veribiota verify … --print-details` on the checks and certificate.
-4. Prints the SHA256 lines you can paste into a pilot report.
+3) Canonicalize (optional) and compare:
+```bash
+./veribiota --canon build/artifacts/checks/sir-demo.json \
+  --out build/artifacts/checks/sir-demo.canon.json
+diff -u build/artifacts/checks/sir-demo.json \
+       build/artifacts/checks/sir-demo.canon.json
+```
 
-Run the command from the repository root (this folder is frozen snapshot data). All outputs land in `build/artifacts/`. Share the `sir.*.json` files and corresponding `.sha256` sidecars with the pilot customer alongside the Stripe invoice.
+What “good” looks like
+- SHA lines print with stable values across reruns/OS.
+- `verify … --print-details` shows `signature.kid=…`, matching your JWKS.
+- No errors; exit code 0.
 
-Need to re-run later? Re-run `make pilot-demo` (or call `scripts/pilot_demo.sh` directly) and compare the SHA lines. Deterministic output means the schema contract is still locked.
+Common failure modes (and quick fixes)
+- Wrong `kid` or JWKS mismatch → ensure `security/jwks.json` contains the Ed25519 public key matching `VERIBIOTA_SIG_KEY` (see docs key‑gen recipe).
+- Non‑canonical bytes / CRLF → run `veribiota --canon <file> --out <file>` to enforce LF + stable ordering.
+- Missing signature in enforced mode → set `VERIBIOTA_SIG_MODE=signed-enforced` and provide `--sign-key/--sign-kid`.
+- Header mismatch (SPKI vs raw key) → JWKS `x` must be the 32‑byte raw Ed25519 public key, base64url‑encoded (no padding).
+
+Tip: deterministic output means the schema contract is locked. Re‑emit later and compare SHA256 lines to confirm nothing drifted.

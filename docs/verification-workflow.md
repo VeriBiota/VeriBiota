@@ -27,6 +27,10 @@ make sign-soft
 ```
 The signature block records `kid`, `issuedAt`, `payloadHash` (SHA‑256), and canonicalization settings.
 
+Preflight checks (CI/local):
+- `scripts/sign_preflight.sh` verifies JWKS matches the private key and that artifacts advertise `canonicalization: { scheme: "veribiota-canon-v1", newlineTerminated: true }`.
+- Signing is refused if canonicalization mismatches or header/payload metadata diverge.
+
 ## 4) Verify certificates and checks
 Consumers verify both canonicalization and signature:
 ```bash
@@ -50,3 +54,16 @@ model.json → certificate.json → checks.json → signature → JWKS
 ```
 
 Treat schemas under `schema/` as immutable for a given major version. All artifacts carry their `scheme` and canonicalization policy explicitly.
+
+## Minisign sidecars (optional)
+For Unix‑friendly detached signatures, you can create `*.minisig` files that sign the same canonical bytes used for JWS.
+
+```bash
+# Sign (assumes VERIBIOTA_MINISIGN_SEC points to your .key)
+make minisign
+
+# Verify (assumes VERIBIOTA_MINISIGN_PUB points to your .pub)
+make verify-minisign
+```
+
+Notes: canonicalize before signing (the helper does this automatically), never commit keys, and keep this optional on Windows. See the “Minisign sidecars (optional)” section in the repository README for details.

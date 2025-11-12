@@ -46,3 +46,24 @@ void veribiota_checks_free(void);
 5. **Stability** – the FFI ABI is frozen until schema v0.2. Ship any engine changes via a new crate version without breaking symbols.
 
 Once the real implementation lands, drop it into the `RuntimeChecks` trait and keep the stub as an integration test.
+
+## Local Results Evaluation (Rust helper)
+
+For quick validation of positivity and invariant drift on a results JSONL, build and run the lightweight Rust evaluator:
+
+```bash
+cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval
+./target/debug/biosim-eval \
+  --checks build/artifacts/checks/sir-demo.json \
+  --results build/results/sir-sim.jsonl
+```
+
+It prints a tally like:
+
+```
+tally: any_neg=false violated=false max_abs_drift=0.000000 max_rel_drift=0.000000
+```
+
+Notes:
+- The helper reads either `conc` or `counts` arrays per snapshot and respects strict linear invariant tolerances.
+- It’s a convenience tool for demos and local runs; production engines should link the FFI or embed an equivalent implementation.

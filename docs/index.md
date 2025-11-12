@@ -1,4 +1,4 @@
-# VeriBiota — Mathematically Proven Biology
+# VeriBiota™ — Mathematically Proven Biology
 
 VeriBiota transforms biological and biochemical models into cryptographically signed, formally verified artifacts. Every reaction, rate law, and invariant is backed by theorem‑proven logic and a reproducible audit trail — turning biological simulation into a compliance‑grade science.
 
@@ -39,6 +39,17 @@ Tip: For a full signing round‑trip with a disposable local key, see Getting St
 - Runtime Checks (docs/runtime_checks.md)
 - QA Checklist (docs/qa_checklist.md)
 - Roadmap (docs/roadmap.md)
+
+## Try a simulation
+```bash
+# ODE-like demo (conc values)
+./veribiota simulate --steps 50 --out build/results/sir-sim.jsonl
+./veribiota verify results build/artifacts/checks/sir-demo.json build/results/sir-sim.jsonl
+
+# SSA-like demo (stubbed)
+./veribiota simulate --ssa --steps 50 --out build/results/sir-ssa.jsonl
+./veribiota verify results build/artifacts/checks/sir-demo.json build/results/sir-ssa.jsonl
+```
 
 ## Mission
 Make verified computation the default for life sciences.

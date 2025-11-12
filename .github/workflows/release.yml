@@ -117,6 +117,20 @@ jobs:
           tar -C build -czf artifacts.tgz artifacts
           ls -lh artifacts.tgz
 
+      - name: Build pilot demo artifacts
+        run: |
+          set -euo pipefail
+          if [[ -n "${VERIBIOTA_SIG_KEY:-}" ]]; then
+            make -C releases/pilot-demo-v1 sign-soft
+          else
+            make -C releases/pilot-demo-v1 emit
+          fi
+
+      - name: Create pilot demo tarball
+        run: |
+          tar -C releases/pilot-demo-v1/build -czf pilot-demo-v1-artifacts.tgz artifacts
+          ls -lh pilot-demo-v1-artifacts.tgz
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -127,5 +141,6 @@ jobs:
             artifacts.tgz
             LICENSE
             NOTICE
+            pilot-demo-v1-artifacts.tgz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
