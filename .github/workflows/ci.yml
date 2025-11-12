@@ -30,6 +30,20 @@ jobs:
           brew install openssl@3
           echo "/opt/homebrew/opt/openssl@3/bin" >> $GITHUB_PATH
 
+      - name: Configure OpenSSL path
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+            OPENSSL_BIN="/opt/homebrew/opt/openssl@3/bin/openssl"
+          else
+            OPENSSL_BIN="$(command -v openssl)"
+          fi
+          if [[ ! -x "$OPENSSL_BIN" ]]; then
+            echo "Unable to locate openssl binary" >&2
+            exit 1
+          fi
+          echo "VERIBIOTA_OPENSSL=$OPENSSL_BIN" >> $GITHUB_ENV
+
       - name: Install elan (Lean toolchain)
         run: |
           curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
@@ -205,6 +219,20 @@ jobs:
         run: |
           lake update
           lake exe cache get
+
+      - name: Configure OpenSSL path
+        run: |
+          set -euo pipefail
+          if [[ -x "/opt/homebrew/opt/openssl@3/bin/openssl" ]]; then
+            OPENSSL_BIN="/opt/homebrew/opt/openssl@3/bin/openssl"
+          else
+            OPENSSL_BIN="$(command -v openssl)"
+          fi
+          if [[ ! -x "$OPENSSL_BIN" ]]; then
+            echo "Unable to locate openssl binary" >&2
+            exit 1
+          fi
+          echo "VERIBIOTA_OPENSSL=$OPENSSL_BIN" >> $GITHUB_ENV
 
       - name: Prepare signing material
         env:
