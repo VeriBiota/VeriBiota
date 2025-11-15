@@ -3,7 +3,12 @@ import fs from 'node:fs';
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 
-const ajv = new Ajv({ allErrors: true, strict: true });
+const ajv = new Ajv({
+  allErrors: true,
+  strict: true,
+  // Our schemas use `type: ["X","null"]` unions; allow them explicitly.
+  allowUnionTypes: true,
+});
 addFormats(ajv);
 
 function load(p) { return JSON.parse(fs.readFileSync(p, 'utf8')); }

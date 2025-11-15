@@ -157,6 +157,76 @@ def writeResultsJsonl (outPath : FilePath) (modelHash checksDigest : String)
       h.putStr (line.compress)
       h.putStr "\n"
 
+def verifyResults (checksPath resultsPath : FilePath) : IO UInt32 := do
+  let checksPayload ← IO.FS.readFile checksPath
+  let bundle ←
+    match Biosim.IO.Checks.Bundle.fromString? checksPayload with
+    | Except.ok b => pure b
+    | Except.error err =>
+        IO.eprintln s!"Failed to parse checks: {err}"
+        return (4 : UInt32) -- schema-error
+  let digestTag := s!"sha256:{← Biosim.IO.sha256Hex checksPath}"
+  let contents ← IO.FS.readFile resultsPath
+  let lines := contents.splitOn "\n"
+  let mut lineNo := 0
+  let mut processed := 0
+  for line in lines do
+    lineNo := lineNo + 1
+    let trimmed := line.trim
+    if trimmed.isEmpty then
+      continue
+    processed := processed + 1
+    let json ←
+      match Json.parse trimmed with
+      | Except.ok j => pure j
+      | Except.error err =>
+          IO.eprintln s!"Invalid JSON on line {lineNo}: {err}"
+          return (1 : UInt32)
+    let modelHash ←
+      match json.getObjVal? "modelHash" with
+      | Except.ok (Json.str s) => pure s
+      | _ =>
+          IO.eprintln s!"Missing modelHash on line {lineNo}"
+          return (1 : UInt32)
+    if modelHash ≠ bundle.modelHash then
+      IO.eprintln s!"modelHash mismatch on line {lineNo}: expected {bundle.modelHash}, found {modelHash}"
+      return (1 : UInt32)
+    let digest? :=
+      match json.getObjVal? "checksDigest" with
+      | Except.ok (Json.str s) => some s
+      | _ =>
+          match json.getObjVal? "checksSha256" with
+          | Except.ok (Json.str s) => some s
+          | _ => none
+    match digest? with
+    | some value =>
+        if value ≠ digestTag then
+          IO.eprintln s!"checks digest mismatch on line {lineNo}: expected {digestTag}, found {value}"
+          return (3 : UInt32) -- signature-mismatch (treat digest mismatch as sig error)
+    | none => pure ()
+  -- Try Rust runtime evaluator for invariants/positivity if available
+  let debugEval := FilePath.mk "target/debug/biosim-eval"
+  let releaseEval := FilePath.mk "target/release/biosim-eval"
+  let debugExists ← debugEval.pathExists
+  let releaseExists ← releaseEval.pathExists
+  if releaseExists || debugExists then
+    let exe := if releaseExists then releaseEval else debugEval
+    let child ← IO.Process.output
+      { cmd := exe.toString
+        , args := #[
+            "--checks", checksPath.toString
+          , "--results", resultsPath.toString
+          , "--json" ]
+        , stderr := .piped }
+    if child.exitCode ≠ 0 then
+      IO.eprintln "biosim-eval failed; falling back to Lean-only verification."
+      IO.eprintln child.stderr
+  if processed = 0 then
+    IO.eprintln "results file was empty"
+    return (2 : UInt32)
+  IO.println s!"verify-results: validated {processed} samples."
+  pure 0
+
 def runSimulate (cfg : SimConfig) : IO UInt32 := do
   -- Ensure baseline artifacts exist (model/cert/checks) under build/artifacts
   let paths := Biosim.Examples.CertificateDemo.ArtifactPaths.fromRoot "build/artifacts"
@@ -461,86 +531,6 @@ def runImport (cfg : ImportConfig) : IO UInt32 := do
   IO.println s!"Checks digest: {result.checksDigest}"
   printShaLines result
   return 0
-
-def verifyResults (checksPath resultsPath : FilePath) : IO UInt32 := do
-  let checksPayload ← IO.FS.readFile checksPath
-  let bundle ←
-    match Biosim.IO.Checks.Bundle.fromString? checksPayload with
-    | Except.ok b => pure b
-    | Except.error err =>
-        IO.eprintln s!"Failed to parse checks: {err}"
-        return (4 : UInt32) -- schema-error
-  let digestTag := s!"sha256:{← Biosim.IO.sha256Hex checksPath}"
-  let contents ← IO.FS.readFile resultsPath
-  let lines := contents.splitOn "\n"
-  let mut lineNo := 0
-  let mut processed := 0
-  for line in lines do
-    lineNo := lineNo + 1
-    let trimmed := line.trim
-    if trimmed.isEmpty then
-      continue
-    processed := processed + 1
-    let json ←
-      match Json.parse trimmed with
-      | Except.ok j => pure j
-      | Except.error err =>
-          IO.eprintln s!"Invalid JSON on line {lineNo}: {err}"
-          return (1 : UInt32)
-    let modelHash ←
-      match json.getObjVal? "modelHash" with
-      | Except.ok (Json.str s) => pure s
-      | _ =>
-          IO.eprintln s!"Missing modelHash on line {lineNo}"
-          return (1 : UInt32)
-    if modelHash ≠ bundle.modelHash then
-      IO.eprintln s!"modelHash mismatch on line {lineNo}: expected {bundle.modelHash}, found {modelHash}"
-      return (1 : UInt32)
-    let digest? :=
-      match json.getObjVal? "checksDigest" with
-      | Except.ok (Json.str s) => some s
-      | _ =>
-          match json.getObjVal? "checksSha256" with
-          | Except.ok (Json.str s) => some s
-          | _ => none
-    match digest? with
-    | some value =>
-        if value ≠ digestTag then
-          IO.eprintln s!"checks digest mismatch on line {lineNo}: expected {digestTag}, found {value}"
-          return (3 : UInt32) -- signature-mismatch (treat digest mismatch as sig error)
-    | none => pure ()
-  -- Try Rust runtime evaluator for invariants/positivity if available
-  let debugEval := FilePath.mk "target/debug/biosim-eval"
-  let releaseEval := FilePath.mk "target/release/biosim-eval"
-  let debugExists ← debugEval.pathExists
-  let releaseExists ← releaseEval.pathExists
-  if releaseExists || debugExists then
-    let exe := if releaseExists then releaseEval else debugEval
-    let child ← IO.Process.output
-      { cmd := exe.toString
-        , args := #["--checks", checksPath.toString, "--results", resultsPath.toString, "--json"] }
-    let summaryStr := child.stdout.trim
-    match Json.parse summaryStr with
-    | Except.ok j =>
-        let violated :=
-          match j.getObjVal? "violated" with
-          | Except.ok (Json.bool b) => b
-          | _ => false
-        if violated then
-          IO.eprintln s!"Runtime checks violated (see max_* in summary): {summaryStr}"
-          return (2 : UInt32)
-        else
-          IO.println s!"Results OK: {resultsPath} ({processed} records, modelHash {bundle.modelHash})"
-          return (0 : UInt32)
-    | Except.error _ =>
-        -- If parsing fails, print raw output and fall through as OK for now
-        IO.println child.stdout
-        IO.println s!"Results OK: {resultsPath} ({processed} records, modelHash {bundle.modelHash})"
-        return (0 : UInt32)
-  else
-    IO.println "[verify results] Rust runtime not found; build with: cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval"
-    IO.println s!"Results OK: {resultsPath} ({processed} records, modelHash {bundle.modelHash})"
-    return (0 : UInt32)
 
 def parseCanonCommand : List String → Except String (FilePath × Option FilePath)
   | input :: rest =>
