@@ -45,6 +45,8 @@ def usage : String :=
     , "  veribiota verify results <checks.json> <results.jsonl>"
     , "  veribiota --canon <artifact.json> [--out OUTPUT]"
     , "  veribiota --checks-schema"
+    , "  veribiota --version"
+    , "  veribiota --schema-info"
     , ""
     , "Common options:"
     , "  --emit-all / --emit-checks  Allow overwriting artifacts (required for emit)."
@@ -178,6 +180,14 @@ def runSimulate (cfg : SimConfig) : IO UInt32 := do
   let β : Float := 0.2
   let γ : Float := 0.1
   let resultsPath := cfg.outPath?.getD (FilePath.mk "build/results/sir-sim.jsonl")
+  let finalize (label : String) (samples : List (Float × Float × Float × Float)) : IO Unit := do
+    let out := samples.reverse
+    writeResultsJsonl resultsPath modelHash checksDigest out cfg.counts
+    IO.println s!"simulate ({label}): wrote {out.length} snapshots to {resultsPath}"
+    let (_, s0, i0, r0) := out.headD (0.0, 0.0, 0.0, 0.0)
+    let (tLast, sN, iN, rN) := out.getLastD (0.0, 0.0, 0.0, 0.0)
+    IO.println s!"t0: S={s0} I={i0} R={r0}"
+    IO.println s!"tN={tLast}: S={sN} I={iN} R={rN}"
   if cfg.ssa then
     let mut t : Float := 0.0
     let mut S : Float := 999.0
@@ -191,13 +201,7 @@ def runSimulate (cfg : SimConfig) : IO UInt32 := do
       S := S'
       I := I'
       R := R'
-    let out := samples.reverse
-    writeResultsJsonl resultsPath modelHash checksDigest out cfg.counts
-    IO.println s!"simulate (SSA): wrote {out.length} snapshots to {resultsPath}"
-    let (_, s0, i0, r0) := out.headD (0.0, 0.0, 0.0, 0.0)
-    let (tLast, sN, iN, rN) := out.getLastD (0.0, 0.0, 0.0, 0.0)
-    IO.println s!"t0: S={s0} I={i0} R={r0}"
-    IO.println s!"tN={tLast}: S={sN} I={iN} R={rN}"
+    finalize "SSA" samples
   else
     let mut t : Float := 0.0
     let mut S : Float := 999.0
@@ -211,32 +215,14 @@ def runSimulate (cfg : SimConfig) : IO UInt32 := do
       S := S'
       I := I'
       R := R'
-    let out := samples.reverse
-    writeResultsJsonl resultsPath modelHash checksDigest out cfg.counts
-    IO.println s!"simulate (ODE): wrote {out.length} snapshots to {resultsPath}"
-    let (_, s0, i0, r0) := out.headD (0.0, 0.0, 0.0, 0.0)
-    let (tLast, sN, iN, rN) := out.getLastD (0.0, 0.0, 0.0, 0.0)
-    IO.println s!"t0: S={s0} I={i0} R={r0}"
-    IO.println s!"tN={tLast}: S={sN} I={iN} R={rN}"
-  -- Print verification hint and attempt Rust evaluator if present
-  IO.println s!"Verify: ./veribiota verify results {checksPath} {resultsPath}"
-  let debugEval := FilePath.mk "target/debug/biosim-eval"
-  let releaseEval := FilePath.mk "target/release/biosim-eval"
-  let debugExists ← debugEval.pathExists
-  let releaseExists ← releaseEval.pathExists
-  if releaseExists then
-    let child ← IO.Process.output
-      { cmd := releaseEval.toString
-        , args := #["--checks", checksPath.toString, "--results", resultsPath.toString] }
-    IO.println child.stdout
-  else if debugExists then
-    let child ← IO.Process.output
-      { cmd := debugEval.toString
-        , args := #["--checks", checksPath.toString, "--results", resultsPath.toString] }
-    IO.println child.stdout
+    finalize "ODE" samples
+  let verifyStatus ← verifyResults checksPath resultsPath
+  if verifyStatus = 0 then
+    IO.println s!"Simulation + verification OK: {resultsPath}"
+    pure 0
   else
-    IO.println "(optional) Build Rust evaluator: cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval"
-  pure 0
+    IO.eprintln s!"Simulation verification failed (code {verifyStatus})."
+    pure verifyStatus
 def parseVerifyKind : String → Except String VerifyKind
   | "checks" => Except.ok .checks
   | "cert" => Except.ok .cert
@@ -403,6 +389,15 @@ def describeSchema : IO Unit := do
   IO.println "veribiota.checks.v1"
   IO.println s!"canonicalization: {Biosim.IO.canonicalScheme} (newlineTerminated)"
 
+def schemaInfo : IO Unit := do
+  let ids := [
+    "veribiota.model.v1",
+    "veribiota.checks.v1",
+    "veribiota.certificate.v1"
+  ]
+  for id in ids do IO.println id
+  IO.println s!"canonicalization: {Biosim.IO.canonicalScheme}"
+
 def runImport (cfg : ImportConfig) : IO UInt32 := do
   if !cfg.emitConfirmed then
     IO.eprintln "Refusing to overwrite artifacts without --emit-all."
@@ -474,7 +469,7 @@ def verifyResults (checksPath resultsPath : FilePath) : IO UInt32 := do
     | Except.ok b => pure b
     | Except.error err =>
         IO.eprintln s!"Failed to parse checks: {err}"
-        return (1 : UInt32)
+        return (4 : UInt32) -- schema-error
   let digestTag := s!"sha256:{← Biosim.IO.sha256Hex checksPath}"
   let contents ← IO.FS.readFile resultsPath
   let lines := contents.splitOn "\n"
@@ -512,10 +507,40 @@ def verifyResults (checksPath resultsPath : FilePath) : IO UInt32 := do
     | some value =>
         if value ≠ digestTag then
           IO.eprintln s!"checks digest mismatch on line {lineNo}: expected {digestTag}, found {value}"
-          return (1 : UInt32)
+          return (3 : UInt32) -- signature-mismatch (treat digest mismatch as sig error)
     | none => pure ()
-  IO.println s!"Results OK: {resultsPath} ({processed} records, modelHash {bundle.modelHash})"
-  return (0 : UInt32)
+  -- Try Rust runtime evaluator for invariants/positivity if available
+  let debugEval := FilePath.mk "target/debug/biosim-eval"
+  let releaseEval := FilePath.mk "target/release/biosim-eval"
+  let debugExists ← debugEval.pathExists
+  let releaseExists ← releaseEval.pathExists
+  if releaseExists || debugExists then
+    let exe := if releaseExists then releaseEval else debugEval
+    let child ← IO.Process.output
+      { cmd := exe.toString
+        , args := #["--checks", checksPath.toString, "--results", resultsPath.toString, "--json"] }
+    let summaryStr := child.stdout.trim
+    match Json.parse summaryStr with
+    | Except.ok j =>
+        let violated :=
+          match j.getObjVal? "violated" with
+          | Except.ok (Json.bool b) => b
+          | _ => false
+        if violated then
+          IO.eprintln s!"Runtime checks violated (see max_* in summary): {summaryStr}"
+          return (2 : UInt32)
+        else
+          IO.println s!"Results OK: {resultsPath} ({processed} records, modelHash {bundle.modelHash})"
+          return (0 : UInt32)
+    | Except.error _ =>
+        -- If parsing fails, print raw output and fall through as OK for now
+        IO.println child.stdout
+        IO.println s!"Results OK: {resultsPath} ({processed} records, modelHash {bundle.modelHash})"
+        return (0 : UInt32)
+  else
+    IO.println "[verify results] Rust runtime not found; build with: cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval"
+    IO.println s!"Results OK: {resultsPath} ({processed} records, modelHash {bundle.modelHash})"
+    return (0 : UInt32)
 
 def parseCanonCommand : List String → Except String (FilePath × Option FilePath)
   | input :: rest =>
@@ -530,6 +555,12 @@ def parseCanonCommand : List String → Except String (FilePath × Option FilePa
 
 def runCli (args : List String) : IO UInt32 := do
   match args with
+  | "--version" :: _ =>
+      IO.println s!"veribiota {toolkitVersion} ({Lean.versionString})"
+      pure 0
+  | "--schema-info" :: _ =>
+      schemaInfo
+      pure 0
   | "simulate" :: rest =>
       match parseSimArgs rest with
       | Except.error err =>

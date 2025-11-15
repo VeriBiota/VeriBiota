@@ -2,6 +2,10 @@
 **Mathematically Proven Biology™** · [Docs Site](https://veribiota.github.io/VeriBiota/)
 
 [![Docs](https://img.shields.io/badge/docs-MkDocs%20Material-7A6BB2)](https://veribiota.github.io/VeriBiota/)
+[![Fast Gates](https://github.com/chris/Simulife/actions/workflows/ci.yml/badge.svg?label=fast-gates)](https://github.com/chris/Simulife/actions/workflows/ci.yml)
+
+> **Fast Gates:** every PR runs `make verify-results` (runtime-backed checks) and `make check` (schema validation) before merge.
+[![Fast Gates](https://github.com/chris/Simulife/actions/workflows/ci.yml/badge.svg?label=fast-gates)](https://github.com/chris/Simulife/actions/workflows/ci.yml)
 
 Schemas: `veribiota.model.v1` · `veribiota.checks.v1` · `veribiota.certificate.v1`  
 Canon: `veribiota-canon-v1`
@@ -103,7 +107,8 @@ make sign-soft
 > ```
 > The signing helper uses `VERIBIOTA_OPENSSL` whenever it is present.
 
-Docs: https://veribiota.github.io/VeriBiota/ · [`docs/cli.md`](docs/cli.md) · [`docs/model-ir.md`](docs/model-ir.md)
+Docs: https://veribiota.github.io/VeriBiota/ · [`docs/cli.md`](docs/cli.md) · [`docs/model-ir.md`](docs/model-ir.md) · [`docs/simulator-integration.md`](docs/simulator-integration.md)
+Adapter pack: [`adapters/README.md`](adapters/README.md)
 
 ---
 

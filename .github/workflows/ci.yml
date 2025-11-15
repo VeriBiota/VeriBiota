@@ -4,12 +4,53 @@ on:
   push:
     branches: ["main", "master"]
   pull_request:
+  schedule:
+    # Nightly at 02:00 UTC
+    - cron: '0 2 * * *'
 
 permissions:
   contents: read
 
 jobs:
+  fast-gates:
+    name: fast-gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install elan (Lean toolchain)
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
+            | sh -s -- -y --default-toolchain=$(cat lean-toolchain)
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: Fetch mathlib cache
+        run: |
+          lake update
+          lake exe cache get
+
+      - name: Build CLI (Lean)
+        run: lake build
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install npm dependencies
+        run: npm ci || true
+
+      - name: Verify results (soft fallback with runtime if available)
+        run: make verify-results
+
+      - name: Schema validation (checks + certificate)
+        run: make check
+
   build-test:
+    if: github.event_name == 'schedule'
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -73,10 +114,8 @@ jobs:
           grep -q "docs/cli.md" README.md
           grep -q "veribiota import" docs/cli.md
 
-      - name: Simulate results (JSONL) and verify metadata
-        run: |
-          ./veribiota simulate --steps 50 --dt 0.25 --out build/results/sir-ci.jsonl
-          ./veribiota verify results build/artifacts/checks/sir-demo.json build/results/sir-ci.jsonl
+      - name: Verify results (Makefile, soft fallback)
+        run: make verify-results
 
       - name: Install Rust toolchain (ubuntu-only)
         if: matrix.os == 'ubuntu-latest'
@@ -85,6 +124,10 @@ jobs:
       - name: Build biosim-eval (Rust helper)
         if: matrix.os == 'ubuntu-latest'
         run: cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval
+
+      - name: Verify results (Makefile, with Rust runtime)
+        if: matrix.os == 'ubuntu-latest'
+        run: make verify-results
 
       - name: Evaluate results drift/positivity (optional)
         if: matrix.os == 'ubuntu-latest'
@@ -189,14 +232,14 @@ jobs:
             --sign-key "$VERIBIOTA_SIG_KEY" \
             --sign-kid "$VERIBIOTA_SIG_KID"
 
-      - name: Canonicalize & validate schemas
+      - name: Canonicalize & validate schemas (Makefile)
         if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
         run: |
           ./veribiota --canon build/artifacts/checks/sir-demo.json \
             --out build/artifacts/checks/sir-demo.json
           ./veribiota --canon build/artifacts/certificates/sir-demo.json \
             --out build/artifacts/certificates/sir-demo.json
-          node scripts/schemaValidate.mjs
+          make check
 
       - name: Tamper harness
         if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}

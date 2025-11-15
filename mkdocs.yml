@@ -55,6 +55,7 @@ nav:
       - Model IR: model-ir.md
       - Invariants: invariants.md
       - Runtime Checks: runtime_checks.md
+      - Simulator Integration: simulator-integration.md
   - CLI: cli.md
   - QA & Compliance:
       - QA Checklist: qa_checklist.md

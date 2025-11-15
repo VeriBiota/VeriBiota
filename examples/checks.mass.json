@@ -1,0 +1,29 @@
+{
+  "toolchain": {
+    "lean": "4.9.0",
+    "mathlib": "v4.9.0",
+    "tactics": "Invariant.lin@0.1"
+  },
+  "schema": "veribiota.checks.v1",
+  "modelHash": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  "generatedAt": "2025-01-01T00:00:00Z",
+  "canonicalization": {
+    "scheme": "veribiota-canon-v1",
+    "newlineTerminated": true
+  },
+  "checks": [
+    {
+      "type": "positivity_conc",
+      "species": ["S", "I", "R"],
+      "tolerance": 0
+    },
+    {
+      "type": "lin_invariant",
+      "name": "total_population",
+      "proofId": "examples.total_population",
+      "weights": {"S": 1, "I": 1, "R": 1},
+      "tolerance": {"mode": "absolute", "value": 1e-9},
+      "strict": true
+    }
+  ]
+}

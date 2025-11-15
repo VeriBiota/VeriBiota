@@ -22,6 +22,10 @@ lake update && lake build
   --out build/artifacts/checks/sir-demo.json
 ./veribiota --checks-schema
 # prints: veribiota.checks.v1 / canonicalization: veribiota-canon-v1 (newlineTerminated)
+./veribiota --version
+# prints: veribiota <toolkit> (<Lean-version>)
+./veribiota --schema-info
+# prints canonical schema IDs + canonicalization scheme
 ```
 
 ## Signing Modes (dev → soft → enforced)
@@ -61,6 +65,18 @@ export VERIBIOTA_SIG_MODE=signed-enforced
 # newline-delimited snapshots (JSONL) -> drift/positivity checks
 ./veribiota verify results build/artifacts/checks/sir-demo.json results.jsonl \
   --jwks security/jwks.json --print-details
+
+# Exit codes
+#   0 = ok
+#   2 = checks-violation (positivity / invariant drift)
+#   3 = signature-mismatch (digest mismatch)
+#   4 = schema-error (invalid checks JSON)
+
+# Runtime enforcement
+# If the Rust helper (biosim-eval) is present, CLI enforces the exit codes above.
+# If not present, CLI prints a hint and falls back to lightweight checks (soft fallback).
+# `veribiota simulate …` now triggers the same verification automatically after each run.
+# See docs/simulator-integration.md for adapter options.
 ```
 
 ## Simulate (demo)
@@ -81,4 +97,7 @@ cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval
 # Makefile shortcuts
 make simulate   # emit ODE trajectory + verify metadata
 make eval       # build biosim-eval and print text + JSON summaries
+make verify-results  # build biosim-eval if available, then run CLI verify (soft fallback)
+make check      # validate checks & certificate JSON against schemas
+# docs/simulator-integration.md covers CLI, FFI, and Python adapters.
 ```

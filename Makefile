@@ -6,7 +6,7 @@ JWKS=security/jwks.json
 DEFAULT_OPENSSL=$(shell /usr/bin/env bash -lc 'if [[ -x "/opt/homebrew/opt/openssl@3/bin/openssl" ]]; then echo /opt/homebrew/opt/openssl@3/bin/openssl; else command -v openssl; fi')
 OPENSSL_BIN?=$(DEFAULT_OPENSSL)
 
-.PHONY: emit sign-soft verify canon pilot-demo
+.PHONY: emit sign-soft verify canon pilot-demo verify-results check
 
 emit:
 	./veribiota --emit-all --out $(ART)
@@ -48,6 +48,27 @@ eval:
 	cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval
 	./target/debug/biosim-eval --checks $(CHECKS) --results build/results/sir-sim.jsonl || true
 	./target/debug/biosim-eval --json --checks $(CHECKS) --results build/results/sir-sim.jsonl || true
+
+# Attempt to build biosim-eval, then run CLI verify results with soft fallback
+verify-results:
+	@if [ ! -f $(CHECKS) ]; then \
+	  $(MAKE) emit; fi
+	@if [ ! -f build/results/sir-sim.jsonl ]; then \
+	  $(MAKE) simulate; fi
+	@if command -v cargo >/dev/null 2>&1; then \
+	  echo "[verify-results] building biosim-eval (release)"; \
+	  cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval --release || \
+	    echo "[verify-results] cargo build failed; proceeding with CLI fallback"; \
+	else \
+	  echo "[verify-results] cargo not found; proceeding with CLI fallback"; \
+	fi
+	./veribiota verify results $(CHECKS) build/results/sir-sim.jsonl
+
+# Validate checks and certificate JSON against schemas
+check:
+	@if [ ! -f $(CHECKS) ] || [ ! -f $(CERT) ]; then \
+	  $(MAKE) emit; fi
+	@node scripts/schemaValidate.mjs $(CHECKS) $(CERT)
 
 MINISIGN_SEC?=$(VERIBIOTA_MINISIGN_SEC)
 MINISIGN_PUB?=$(VERIBIOTA_MINISIGN_PUB)

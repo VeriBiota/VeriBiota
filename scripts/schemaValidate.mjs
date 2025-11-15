@@ -1,32 +1,32 @@
-import { readFile } from "node:fs/promises";
-import process from "node:process";
-import Ajv from "ajv";
-import addFormats from "ajv-formats";
+// scripts/schemaValidate.mjs
+import fs from 'node:fs';
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
 
-const ajv = new Ajv({ strict: false, allErrors: true, allowUnionTypes: true });
+const ajv = new Ajv({ allErrors: true, strict: true });
 addFormats(ajv);
 
-async function validatePair(schemaPath, dataPath) {
-  const schema = JSON.parse(await readFile(schemaPath, "utf8"));
-  const data = JSON.parse(await readFile(dataPath, "utf8"));
-  const validate = ajv.compile(schema);
-  const valid = validate(data);
-  if (valid) {
-    console.log(`Validated ${dataPath} ✅`);
-    return true;
-  } else {
-    console.error(`Validation failed for ${dataPath} ❌`);
+function load(p) { return JSON.parse(fs.readFileSync(p, 'utf8')); }
+
+const checksSchema = load('schema/veribiota.checks.v1.json');
+const certSchema   = load('schema/veribiota.certificate.v1.json');
+const validateChecks = ajv.compile(checksSchema);
+const validateCert   = ajv.compile(certSchema);
+
+const [checksPath = 'releases/pilot-demo-v1/outputs/checks.json',
+       certPath   = 'releases/pilot-demo-v1/certificates/certificate.json'] = process.argv.slice(2);
+
+for (const [name, file, validate] of [
+  ['checks', checksPath, validateChecks],
+  ['certificate', certPath, validateCert],
+]) {
+  const data = load(file);
+  const ok = validate(data);
+  if (!ok) {
+    console.error(`❌ ${name} failed schema validation: ${file}`);
     console.error(validate.errors);
-    return false;
+    process.exitCode = 1;
+  } else {
+    console.log(`✅ ${name} valid: ${file}`);
   }
-}
-
-const pairs = [
-  ["schema/biolean.checks.v1.json", "build/artifacts/checks/sir-demo.json"],
-  ["schema/biolean.certificate.v1.json", "build/artifacts/certificates/sir-demo.json"],
-];
-
-const results = await Promise.all(pairs.map(([schema, data]) => validatePair(schema, data)));
-if (results.includes(false)) {
-  process.exit(1);
 }
