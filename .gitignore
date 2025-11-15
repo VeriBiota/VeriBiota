@@ -1,8 +1,13 @@
 .lake/
 build/
 engine/biosim-checks/target/
+target/
 node_modules/
 *.tmp
 .DS_Store
-security/.veribiota_signing.key
 site/
+
+# Local security material (never commit real keys or JWKS)
+security/jwks.json
+security/*.key
+security/.veribiota_signing.key

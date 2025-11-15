@@ -2,10 +2,10 @@
 **Mathematically Proven Biology™** · [Docs Site](https://veribiota.github.io/VeriBiota/)
 
 [![Docs](https://img.shields.io/badge/docs-MkDocs%20Material-7A6BB2)](https://veribiota.github.io/VeriBiota/)
-[![Fast Gates](https://github.com/chris/Simulife/actions/workflows/ci.yml/badge.svg?label=fast-gates)](https://github.com/chris/Simulife/actions/workflows/ci.yml)
+[![Fast Gates](https://github.com/VeriBiota/VeriBiota/actions/workflows/ci.yml/badge.svg?label=fast-gates)](https://github.com/VeriBiota/VeriBiota/actions/workflows/ci.yml)
 
 > **Fast Gates:** every PR runs `make verify-results` (runtime-backed checks) and `make check` (schema validation) before merge.
-[![Fast Gates](https://github.com/chris/Simulife/actions/workflows/ci.yml/badge.svg?label=fast-gates)](https://github.com/chris/Simulife/actions/workflows/ci.yml)
+[![Fast Gates](https://github.com/VeriBiota/VeriBiota/actions/workflows/ci.yml/badge.svg?label=fast-gates)](https://github.com/VeriBiota/VeriBiota/actions/workflows/ci.yml)
 
 Schemas: `veribiota.model.v1` · `veribiota.checks.v1` · `veribiota.certificate.v1`  
 Canon: `veribiota-canon-v1`
@@ -157,6 +157,9 @@ model.json → certificate.json → checks.json → signature → JWKS
 - Open-core components (Lean proofs, CLI, schemas) — **Apache 2.0**  
 - Enterprise runtime, signer, and audit modules — **Commercial license**  
 - See `LICENSE` and `NOTICE` for terms and attribution
+
+> **Important:** VeriBiota is **research software** and is **not** a medical device.  
+> It is not intended for diagnosis, treatment, or clinical decision-making.
 
 ---
 
