@@ -55,6 +55,11 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      VERIBIOTA_MINISIGN_PUB: ${{ secrets.VERIBIOTA_MINISIGN_PUB }}
+      VERIBIOTA_MINISIGN_SEC: ${{ secrets.VERIBIOTA_MINISIGN_SEC }}
+      VERIBIOTA_SIG_KEY: ${{ secrets.VERIBIOTA_SIG_KEY }}
+      VERIBIOTA_JWKS_JSON: ${{ secrets.VERIBIOTA_JWKS_JSON }}
     steps:
       - uses: actions/checkout@v4
 
@@ -136,10 +141,7 @@ jobs:
           ./target/debug/biosim-eval --json --checks build/artifacts/checks/sir-demo.json --results build/results/sir-ci.jsonl || true
 
       - name: Minisign sidecars (optional)
-        if: matrix.os == 'ubuntu-latest' && secrets.VERIBIOTA_MINISIGN_PUB && secrets.VERIBIOTA_MINISIGN_SEC
-        env:
-          VERIBIOTA_MINISIGN_PUB: ${{ secrets.VERIBIOTA_MINISIGN_PUB }}
-          VERIBIOTA_MINISIGN_SEC: ${{ secrets.VERIBIOTA_MINISIGN_SEC }}
+        if: matrix.os == 'ubuntu-latest' && env.VERIBIOTA_MINISIGN_PUB != '' && env.VERIBIOTA_MINISIGN_SEC != ''
         run: |
           sudo apt-get update && sudo apt-get install -y minisign
           mkdir -p .ci_keys
@@ -151,10 +153,7 @@ jobs:
           make verify-minisign
 
       - name: Prepare signing material
-        if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
-        env:
-          VERIBIOTA_SIG_KEY: ${{ secrets.VERIBIOTA_SIG_KEY }}
-          VERIBIOTA_JWKS_JSON: ${{ secrets.VERIBIOTA_JWKS_JSON }}
+        if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && env.VERIBIOTA_SIG_KEY != '' && env.VERIBIOTA_JWKS_JSON != ''
         run: |
           set -euo pipefail
           if [[ -z "${VERIBIOTA_SIG_KEY:-}" ]]; then
@@ -204,19 +203,19 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Emit artifacts (signed-soft)
-        if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
+        if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && env.VERIBIOTA_SIG_KEY != '' && env.VERIBIOTA_JWKS_JSON != ''
         run: make sign-soft
 
       - name: Determinism (clone artifacts)
-        if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
+        if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && env.VERIBIOTA_SIG_KEY != '' && env.VERIBIOTA_JWKS_JSON != ''
         run: cp -r build/artifacts build/artifacts.first
 
       - name: Determinism (re-emit)
-        if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
+        if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && env.VERIBIOTA_SIG_KEY != '' && env.VERIBIOTA_JWKS_JSON != ''
         run: make sign-soft
 
       - name: Determinism (diff)
-        if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
+        if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && env.VERIBIOTA_SIG_KEY != '' && env.VERIBIOTA_JWKS_JSON != ''
         run: |
           diff -u <(jq -S 'del(.signature.issuedAt, .signature.jws)' build/artifacts.first/checks/sir-demo.json) \
                   <(jq -S 'del(.signature.issuedAt, .signature.jws)' build/artifacts/checks/sir-demo.json)
@@ -224,7 +223,7 @@ jobs:
                   <(jq -S 'del(.signature.issuedAt, .signature.jws)' build/artifacts/certificates/sir-demo.json)
 
       - name: Import sample model (separate out dir)
-        if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
+        if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && env.VERIBIOTA_SIG_KEY != '' && env.VERIBIOTA_JWKS_JSON != ''
         run: |
           ./veribiota import --in Biosim/Examples/Model/sir.model.json \
             --emit-all --out build/imported \
@@ -233,7 +232,7 @@ jobs:
             --sign-kid "$VERIBIOTA_SIG_KID"
 
       - name: Canonicalize & validate schemas (Makefile)
-        if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
+        if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && env.VERIBIOTA_SIG_KEY != '' && env.VERIBIOTA_JWKS_JSON != ''
         run: |
           ./veribiota --canon build/artifacts/checks/sir-demo.json \
             --out build/artifacts/checks/sir-demo.json
@@ -242,7 +241,7 @@ jobs:
           make check
 
       - name: Tamper harness
-        if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
+        if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && env.VERIBIOTA_SIG_KEY != '' && env.VERIBIOTA_JWKS_JSON != ''
         run: |
           set -euo pipefail
           bash tests/scripts/tamper.sh build/artifacts/checks/sir-demo.json
@@ -268,7 +267,7 @@ jobs:
           fi
 
       - name: CRLF canonicalization
-        if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
+        if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && env.VERIBIOTA_SIG_KEY != '' && env.VERIBIOTA_JWKS_JSON != ''
         run: |
           set -euo pipefail
           awk 'sub("$","\r")' build/artifacts/checks/sir-demo.json > build/artifacts/checks/sir-demo.crlf.json
@@ -276,12 +275,12 @@ jobs:
           diff -u build/artifacts/checks/sir-demo.json build/artifacts/checks/sir-demo.canon.json
 
       - name: SHA capture
-        if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON }}
+        if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && env.VERIBIOTA_SIG_KEY != '' && env.VERIBIOTA_JWKS_JSON != ''
         run: |
           (sha256sum build/artifacts/models/*.json build/artifacts/certificates/*.json build/artifacts/checks/*.json) || (shasum -a 256 build/artifacts/models/*.json build/artifacts/certificates/*.json build/artifacts/checks/*.json)
 
       - name: Tarball artifacts
-        if: github.ref == 'refs/heads/main' && matrix.os == 'ubuntu-latest' && secrets.VERIBIOTA_SIG_KEY && secrets.VERIBIOTA_JWKS_JSON
+        if: github.ref == 'refs/heads/main' && matrix.os == 'ubuntu-latest' && env.VERIBIOTA_SIG_KEY != '' && env.VERIBIOTA_JWKS_JSON != ''
         run: |
           tar -C build -czf artifacts.tgz artifacts
 
