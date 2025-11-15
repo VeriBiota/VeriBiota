@@ -11,4 +11,4 @@ permissions: read-all
 
 jobs:
   analysis:
-    uses: ossf/scorecard-action/.github/workflows/analysis.yml@v2.4.0
+    uses: ossf/scorecard-action/.github/workflows/analysis.yml@v2.4.3
