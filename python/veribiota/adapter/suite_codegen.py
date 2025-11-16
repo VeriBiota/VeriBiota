@@ -60,7 +60,7 @@ def _render_dag_def(name: str, payload: EditDAGPayload, idx: int) -> str:
     f"  {nodes_block},\n"
     "    edges :=\n"
     f"  {edges_block},\n"
-    f"    root := {root_index} }\n"
+    f"    root := {root_index} }}\n"
   )
 
 
