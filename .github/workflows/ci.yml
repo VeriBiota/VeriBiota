@@ -16,7 +16,7 @@ jobs:
     name: fast-gates
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -72,7 +72,7 @@ jobs:
       VERIBIOTA_SIG_KEY: ${{ secrets.VERIBIOTA_SIG_KEY }}
       VERIBIOTA_JWKS_JSON: ${{ secrets.VERIBIOTA_JWKS_JSON }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Toolchain info
         run: |
@@ -309,7 +309,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install elan (Lean toolchain)
         run: |
