@@ -142,6 +142,8 @@ make sign-soft
 
 Docs: https://veribiota.github.io/VeriBiota/ · [`docs/cli.md`](docs/cli.md) · [`docs/model-ir.md`](docs/model-ir.md) · [`docs/simulator-integration.md`](docs/simulator-integration.md)
 Adapter pack: [`adapters/README.md`](adapters/README.md)
+Profile catalog: [`docs/PROFILE_SPEC.md`](docs/PROFILE_SPEC.md)
+Snapshots & attestation: [`docs/SNAPSHOTS.md`](docs/SNAPSHOTS.md) · [`docs/TIER0_COMPLIANCE.md`](docs/TIER0_COMPLIANCE.md) · [`docs/ATTESTED_PROFILES.md`](docs/ATTESTED_PROFILES.md)
 
 ---
 
@@ -165,6 +167,14 @@ model.json → certificate.json → checks.json → signature → JWKS
 - Tamper harness + schema validation baked into CI (`.github/workflows/ci.yml`)  
 - CI simulates results and (on Ubuntu) optionally evaluates drift/positivity via `biosim-eval`  
 - Ready for 21 CFR Part 11 / SOC 2 audit trails
+
+## ✅ Verification & Compliance
+Tier 0 profiles provide stable schemas, theorem anchors, golden fixtures, deterministic exit codes, and structured JSON errors. Attested profiles add snapshot signatures:
+
+- `--snapshot-out` emits `snapshot_signature_v1` documents binding input hash, schema hash/ID, theorem IDs, and build metadata.
+- Validator + workflow: `.github/scripts/validate_snapshots.py`, `.github/workflows/tier0_snapshots.yml`.
+- Current Tier 0 & attested profiles: `global_affine_v1`, `edit_script_v1`, `edit_script_normal_form_v1`, `prime_edit_plan_v1`, `pair_hmm_bridge_v1` (see `docs/ATTESTED_PROFILES.md`).
+- Examples for external users: `examples/veribiota-example-pipeline/`.
 
 ---
 

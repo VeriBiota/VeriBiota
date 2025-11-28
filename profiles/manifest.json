@@ -8,5 +8,40 @@
     "schema_path": "schemas/edit/edit_script_v1.schema.json",
     "schema": "sha256:53f6e6632ce358503495e41ebd7aa0f54b359fb276fbd56053b50076fa5250c4",
     "theorems": ["VB_EDIT_001"]
+  },
+  "edit_script_normal_form_v1": {
+    "schema_path": "schemas/edit/edit_script_normal_form_v1.schema.json",
+    "schema": "sha256:7c03d1be3f53c90bbf777e048e9e60b14bd1d23568e51cdf935f5b56b76176f6",
+    "theorems": ["VB_EDIT_001", "VB_EDIT_002"]
+  },
+  "prime_edit_plan_v1": {
+    "schema_path": "schemas/prime/prime_edit_plan_v1.schema.json",
+    "schema": "sha256:865cd356818843f5551fc63aaccd557c51ccda97fefe7b91ab7e92ec7a835368",
+    "theorems": ["VB_PE_001", "VB_EDIT_001"]
+  },
+  "pair_hmm_bridge_v1": {
+    "schema_path": "schemas/hmm/pair_hmm_bridge_v1.schema.json",
+    "schema": "sha256:e6984969812aa5b76e4167b6e9c2aacb9f2f8ecbcf4d342fe403bbba2f565c83",
+    "theorems": ["VB_HMM_001", "VB_HMM_002"]
+  },
+  "read_set_conservation_v1": {
+    "schema_path": "schemas/pipeline/read_set_conservation_v1.schema.json",
+    "schema": "sha256:f91e45d0beeeae992fafdead78bfe5369913b1b19b95dfc22ed10909f21e74de",
+    "theorems": ["VB_PIPE_001", "VB_PIPE_002"]
+  },
+  "vcf_normalization_v1": {
+    "schema_path": "schemas/variant/vcf_normalization_v1.schema.json",
+    "schema": "sha256:4f9b422d7a63e2bbb29bfdb6567e517bed9f9ba088c12ccab5ce32fe82827704",
+    "theorems": ["VB_VCF_001", "VB_VCF_002"]
+  },
+  "offtarget_score_sanity_v1": {
+    "schema_path": "schemas/crispr/offtarget_score_sanity_v1.schema.json",
+    "schema": "sha256:0ccd1b0cc3fe39d84ef9d722905f45f492977cd033b8e0c11e37e8b276c2db79",
+    "theorems": ["VB_OFF_001"]
+  },
+  "snapshot_signature_v1": {
+    "schema_path": "schemas/provenance/snapshot_signature_v1.schema.json",
+    "schema": "sha256:fb518c08a7e889c647fe749bb69579b451a87d9183aa1dfc4ebd2528b0215da5",
+    "theorems": ["VB_SIG_001"]
   }
 }

@@ -318,6 +318,20 @@ private def schemaManifestGuard : IO Unit := do
         ["VB_ALIGN_CORE_001", "VB_ALIGN_CORE_002"])
     , ("edit_script_v1", "schemas/edit/edit_script_v1.schema.json",
         ["VB_EDIT_001"])
+    , ("edit_script_normal_form_v1", "schemas/edit/edit_script_normal_form_v1.schema.json",
+        ["VB_EDIT_001", "VB_EDIT_002"])
+    , ("prime_edit_plan_v1", "schemas/prime/prime_edit_plan_v1.schema.json",
+        ["VB_PE_001", "VB_EDIT_001"])
+    , ("pair_hmm_bridge_v1", "schemas/hmm/pair_hmm_bridge_v1.schema.json",
+        ["VB_HMM_001", "VB_HMM_002"])
+    , ("read_set_conservation_v1", "schemas/pipeline/read_set_conservation_v1.schema.json",
+        ["VB_PIPE_001", "VB_PIPE_002"])
+    , ("vcf_normalization_v1", "schemas/variant/vcf_normalization_v1.schema.json",
+        ["VB_VCF_001", "VB_VCF_002"])
+    , ("offtarget_score_sanity_v1", "schemas/crispr/offtarget_score_sanity_v1.schema.json",
+        ["VB_OFF_001"])
+    , ("snapshot_signature_v1", "schemas/provenance/snapshot_signature_v1.schema.json",
+        ["VB_SIG_001"])
     ]
   for (name, schemaPathStr, expectedTheorems) in profiles do
     let entry ←
@@ -346,6 +360,58 @@ private def schemaManifestGuard : IO Unit := do
             throw <| IO.userError s!"Missing theorem list for {name}: {err}"
     | _ =>
         throw <| IO.userError s!"Manifest entry for {name} must be an object"
+
+private def snapshotSignatureTest : IO Unit := do
+  let tmpDir := FilePath.mk "Tests/tmp/snapshot-signature"
+  IO.FS.createDirAll tmpDir
+  let fixturePath := FilePath.mk "Tests/profiles/global_affine_v1/match_pass.json"
+  let fixtureJson ← readJson fixturePath
+  let inputJson ←
+    match fixtureJson.getObjVal? "input" with
+    | Except.ok v => pure v
+    | Except.error err => throw <| IO.userError s!"Fixture missing input: {err}"
+  let inputPath := tmpDir / "input.json"
+  IO.FS.writeFile inputPath (inputJson.pretty 2)
+  let sigPath := tmpDir / "signature.json"
+  let child ← IO.Process.output
+    { cmd := "./veribiota"
+      , args := #["check", "alignment", "global_affine_v1", inputPath.toString, "--snapshot-out", sigPath.toString]
+      , stderr := .piped }
+  assertEq child.exitCode.toNat 0 "Snapshot signature run failed"
+  let sigExists ← sigPath.pathExists
+  assertM sigExists s!"Snapshot signature not written to {sigPath}"
+  let sigJson ← readJson sigPath
+  let profile ← getStringField sigJson "snapshot_profile"
+  assertEq profile "global_affine_v1" "Snapshot profile mismatch"
+  let verification ← getStringField sigJson "verification_result"
+  assertEq verification "passed" "Snapshot verification_result mismatch"
+  let snapshotHash ← getStringField sigJson "snapshot_hash"
+  let expectedHash := s!"sha256:{← Biosim.IO.sha256Hex inputPath}"
+  assertEq snapshotHash expectedHash "Snapshot hash mismatch"
+  let manifestJson ← readJson (FilePath.mk "profiles/manifest.json")
+  let gaEntry ←
+    match manifestJson.getObjVal? "global_affine_v1" with
+    | Except.ok v => pure v
+    | Except.error err => throw <| IO.userError s!"Manifest missing global_affine_v1: {err}"
+  let schemaHash ← getStringField gaEntry "schema"
+  let schemaPath ← getStringField gaEntry "schema_path"
+  let sigSchema ← getStringField sigJson "schema_hash"
+  assertEq sigSchema schemaHash "Snapshot schema hash mismatch"
+  let sigSchemaId ← getStringField sigJson "schema_id"
+  assertEq sigSchemaId schemaPath "Snapshot schema_id mismatch"
+  let theoremsJson ←
+    match sigJson.getObjVal? "theorem_ids" with
+    | Except.ok v => pure v
+    | Except.error err => throw <| IO.userError s!"Snapshot missing theorem_ids: {err}"
+  let theorems ←
+    match jsonArrayStrings theoremsJson with
+    | Except.ok v => pure v
+    | Except.error err => throw <| IO.userError s!"Snapshot theorem_ids invalid: {err}"
+  assertM (theorems.contains "VB_ALIGN_CORE_001") "Snapshot missing VB_ALIGN_CORE_001"
+  assertM (theorems.contains "VB_ALIGN_CORE_002") "Snapshot missing VB_ALIGN_CORE_002"
+  match sigJson.getObjVal? "instance_summary" with
+  | Except.ok (Json.obj _) => pure ()
+  | _ => throw <| IO.userError "Snapshot missing instance_summary object"
 
 private def assertJsonEq (expected actual : Json) (ctx : String) : IO Unit := do
   let expStr := expected.compress
@@ -531,10 +597,17 @@ noncomputable def run : IO Unit := do
   corruptionTest
   largeModelTest
   schemaManifestGuard
+  snapshotSignatureTest
   runProfileGoldenSuite "global_affine_v1" ["check", "alignment", "global_affine_v1"]
     (FilePath.mk "Tests/profiles/global_affine_v1")
   runProfileGoldenSuite "edit_script_v1" ["check", "edit", "edit_script_v1"]
     (FilePath.mk "Tests/profiles/edit_script_v1")
+  runProfileGoldenSuite "edit_script_normal_form_v1" ["check", "edit", "edit_script_normal_form_v1"]
+    (FilePath.mk "Tests/profiles/edit_script_normal_form_v1")
+  runProfileGoldenSuite "prime_edit_plan_v1" ["check", "prime", "prime_edit_plan_v1"]
+    (FilePath.mk "Tests/profiles/prime_edit_plan_v1")
+  runProfileGoldenSuite "pair_hmm_bridge_v1" ["check", "hmm", "pair_hmm_bridge_v1"]
+    (FilePath.mk "Tests/profiles/pair_hmm_bridge_v1")
   IO.println "Artifact integration test passed"
 
 noncomputable unsafe def main : IO Unit :=

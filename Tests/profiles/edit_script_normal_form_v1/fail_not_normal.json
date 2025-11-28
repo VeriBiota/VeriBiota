@@ -1,22 +1,24 @@
 {
   "input": {
     "seqA": "AC",
-    "seqB": "AT",
+    "seqB": "GT",
     "edits": [
+      { "type": "sub", "pos": 0, "len": 1, "payload": "G" },
       { "type": "sub", "pos": 1, "len": 1, "payload": "T" }
     ]
   },
   "expected": {
-    "theorems": ["VB_EDIT_001"],
-    "status": "passed",
+    "theorems": ["VB_EDIT_001", "VB_EDIT_002"],
+    "status": "failed",
     "signature": null,
     "profile_version": "1.0.0",
-    "profile": "edit_script_v1",
+    "profile": "edit_script_normal_form_v1",
     "instance": {
       "seqA_length": 2,
       "seqB_length": 2,
-      "edit_count": 1,
-      "applied_ok": true
+      "edit_count": 2,
+      "applied_ok": true,
+      "normal_form": false
     },
     "engine": {
       "veribiota_version": "0.1.0",
@@ -24,5 +26,5 @@
       "build_id": "dev"
     }
   },
-  "exit": 0
+  "exit": 2
 }

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veribiota.dev/schemas/variant/vcf_normalization_v1.json",
+  "title": "VeriBiota VCF normalization v1",
+  "type": "object",
+  "required": ["ref_seq_window", "vcf_record"],
+  "properties": {
+    "ref_seq_window": { "type": "string" },
+    "vcf_record": {
+      "type": "object",
+      "required": ["CHROM", "POS", "REF", "ALT"],
+      "properties": {
+        "CHROM": { "type": "string" },
+        "POS": { "type": "integer", "minimum": 1 },
+        "REF": { "type": "string" },
+        "ALT": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

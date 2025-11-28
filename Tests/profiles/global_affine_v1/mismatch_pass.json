@@ -12,16 +12,16 @@
     "profile_version": "1.0.0",
     "profile": "global_affine_v1",
     "instance": {
-      "witnessScore": -1,
-      "traceScore": -1,
-      "traceLength": 1,
-      "seqB_length": 1,
       "seqA_length": 1,
-      "dpScore": -1,
-      "alignment_matches_spec": true
+      "seqB_length": 1,
+      "dp_score": -1,
+      "witness_score": -1,
+      "trace_length": 1,
+      "alignment_matches_spec": true,
+      "trace_score": -1
     },
     "engine": {
-      "veribiota_version": "0.10.2-pilot",
+      "veribiota_version": "0.1.0",
       "lean_version": "4.9.0",
       "build_id": "dev"
     }

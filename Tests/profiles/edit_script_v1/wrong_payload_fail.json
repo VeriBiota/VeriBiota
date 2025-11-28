@@ -15,11 +15,11 @@
     "instance": {
       "seqA_length": 2,
       "seqB_length": 2,
-      "edits_count": 1,
+      "edit_count": 1,
       "applied_ok": false
     },
     "engine": {
-      "veribiota_version": "0.10.2-pilot",
+      "veribiota_version": "0.1.0",
       "lean_version": "4.9.0",
       "build_id": "dev"
     }

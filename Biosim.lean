@@ -24,6 +24,7 @@ import Biosim.IO.Jwks
 import Biosim.CLI.Verify
 import Biosim.Examples.Model.SIR
 import Biosim.VeriBiota.EditDAG
+import Biosim.VeriBiota.Theorems
 
 /-!
 Entry point re-exporting all library namespaces so downstream projects can simply `import Biosim`.

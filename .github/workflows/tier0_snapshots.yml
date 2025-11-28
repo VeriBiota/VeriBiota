@@ -1,0 +1,44 @@
+name: VeriBiota Tier0 + Snapshot Attestation
+
+on:
+  push:
+    paths:
+      - "schemas/**"
+      - "profiles/**"
+      - "Tests/profiles/**"
+      - ".github/scripts/validate_snapshots.py"
+  pull_request:
+
+jobs:
+  tier0_snapshots:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Lean and build VeriBiota
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+          export PATH="$HOME/.elan/bin:$PATH"
+          lake update
+          lake build
+
+      - name: Run Tier 0 tests
+        run: |
+          export PATH="$HOME/.elan/bin:$PATH"
+          lake exe biosim_tests
+
+      - name: Run Tier 0 checks and emit signatures
+        run: |
+          export PATH="$HOME/.elan/bin:$PATH"
+          mkdir -p ci_signatures
+          ./veribiota check alignment global_affine_v1 Tests/profiles/global_affine_v1/match_pass.json --snapshot-out ci_signatures/global_affine_v1.sig.json --compact
+          ./veribiota check edit edit_script_normal_form_v1 Tests/profiles/edit_script_normal_form_v1/pass_simple_normal.json --snapshot-out ci_signatures/edit_script_normal_form_v1.sig.json --compact
+          ./veribiota check prime prime_edit_plan_v1 Tests/profiles/prime_edit_plan_v1/pass_simple.json --snapshot-out ci_signatures/prime_edit_plan_v1.sig.json --compact
+          ./veribiota check hmm pair_hmm_bridge_v1 Tests/profiles/pair_hmm_bridge_v1/pass_simple.json --snapshot-out ci_signatures/pair_hmm_bridge_v1.sig.json --compact
+
+      - name: Validate snapshot signatures
+        run: |
+          export PATH="$HOME/.elan/bin:$PATH"
+          python3 -m pip install --quiet jsonschema
+          python3 .github/scripts/validate_snapshots.py ci_signatures

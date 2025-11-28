@@ -15,7 +15,7 @@ open Biosim.CLI
 open Biosim.IO (SignatureMode)
 open Biosim.IO.SignatureMode
 
-def toolkitVersion : String := "0.10.2-pilot"
+def toolkitVersion : String := "0.1.0"
 
 /-- CLI options for emitting artifacts. -/
 structure CliConfig where
@@ -44,7 +44,11 @@ def usage : String :=
     , "  veribiota import --in MODEL.json --emit-all [--out DIR]"
     , "  veribiota verify (checks|cert) <path> --jwks JWKS [--sig-mode MODE] [--print-details]"
     , "  veribiota verify results <checks.json> <results.jsonl>"
-    , "  veribiota check alignment global_affine_v1 <input.json> [--compact]"
+    , "  veribiota check alignment global_affine_v1 <input.json> [--snapshot-out PATH] [--compact]"
+    , "  veribiota check edit edit_script_v1 <input.json> [--snapshot-out PATH] [--compact]"
+    , "  veribiota check edit edit_script_normal_form_v1 <input.json> [--snapshot-out PATH] [--compact]"
+    , "  veribiota check prime prime_edit_plan_v1 <input.json> [--snapshot-out PATH] [--compact]"
+    , "  veribiota check hmm pair_hmm_bridge_v1 <input.json> [--snapshot-out PATH] [--compact]"
     , "  veribiota --canon <artifact.json> [--out OUTPUT]"
     , "  veribiota --checks-schema"
     , "  veribiota --version"
@@ -116,6 +120,20 @@ partial def parseSimArgsAux : SimConfig → List String → Except String SimCon
 
 def parseSimArgs (args : List String) : Except String SimConfig :=
   parseSimArgsAux {} args
+
+structure CheckOptions where
+  pretty : Bool := true
+  snapshotOut? : Option FilePath := none
+
+private def parseCheckOptions : List String → Except String CheckOptions
+  | [] => Except.ok {}
+  | "--compact" :: rest =>
+      do let opts ← parseCheckOptions rest
+         pure { opts with pretty := false }
+  | "--snapshot-out" :: path :: rest =>
+      do let opts ← parseCheckOptions rest
+         pure { opts with snapshotOut? := some (FilePath.mk path) }
+  | flag :: _ => Except.error s!"Unknown check option '{flag}'"
 
 def sirStep (β γ : Float) (dt : Float) (S I R : Float) : (Float × Float × Float) :=
   -- Simple SIR with population-normalized infection
@@ -552,28 +570,40 @@ def parseCanonCommand : List String → Except String (FilePath × Option FilePa
 
 def runCli (args : List String) : IO UInt32 := do
   let buildId := (← IO.getEnv "VERIBIOTA_BUILD_ID").getD "dev"
+  let ver := (← IO.getEnv "VERIBIOTA_VERSION").getD toolkitVersion
   match args with
   | "check" :: "alignment" :: "global_affine_v1" :: input :: rest =>
-      let pretty? :=
-        match rest with
-        | [] => Except.ok true
-        | ["--compact"] => Except.ok false
-        | _ => Except.error Biosim.CLI.Profile.profileUsage
-      match pretty? with
-      | Except.ok pretty =>
-          Biosim.CLI.Profile.runGlobalAffineProfile (FilePath.mk input) pretty toolkitVersion buildId
+      match parseCheckOptions rest with
+      | Except.ok opts =>
+          Biosim.CLI.Profile.runGlobalAffineProfile (FilePath.mk input) opts.pretty ver buildId opts.snapshotOut?
       | Except.error msg => do
           IO.eprintln msg
           pure 1
   | "check" :: "edit" :: "edit_script_v1" :: input :: rest =>
-      let pretty? :=
-        match rest with
-        | [] => Except.ok true
-        | ["--compact"] => Except.ok false
-        | _ => Except.error Biosim.CLI.Profile.profileUsage
-      match pretty? with
-      | Except.ok pretty =>
-          Biosim.CLI.Profile.runEditScriptProfile (FilePath.mk input) pretty toolkitVersion buildId
+      match parseCheckOptions rest with
+      | Except.ok opts =>
+          Biosim.CLI.Profile.runEditScriptProfile (FilePath.mk input) opts.pretty ver buildId opts.snapshotOut?
+      | Except.error msg => do
+          IO.eprintln msg
+          pure 1
+  | "check" :: "edit" :: "edit_script_normal_form_v1" :: input :: rest =>
+      match parseCheckOptions rest with
+      | Except.ok opts =>
+          Biosim.CLI.Profile.runEditScriptNormalFormProfile (FilePath.mk input) opts.pretty ver buildId opts.snapshotOut?
+      | Except.error msg => do
+          IO.eprintln msg
+          pure 1
+  | "check" :: "prime" :: "prime_edit_plan_v1" :: input :: rest =>
+      match parseCheckOptions rest with
+      | Except.ok opts =>
+          Biosim.CLI.Profile.runPrimeEditPlanProfile (FilePath.mk input) opts.pretty ver buildId opts.snapshotOut?
+      | Except.error msg => do
+          IO.eprintln msg
+          pure 1
+  | "check" :: "hmm" :: "pair_hmm_bridge_v1" :: input :: rest =>
+      match parseCheckOptions rest with
+      | Except.ok opts =>
+          Biosim.CLI.Profile.runPairHMMBridgeProfile (FilePath.mk input) opts.pretty ver buildId opts.snapshotOut?
       | Except.error msg => do
           IO.eprintln msg
           pure 1

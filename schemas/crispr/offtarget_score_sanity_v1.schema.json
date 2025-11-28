@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veribiota.dev/schemas/crispr/offtarget_score_sanity_v1.json",
+  "title": "VeriBiota off-target score sanity v1",
+  "type": "object",
+  "required": ["sites"],
+  "properties": {
+    "sites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["mismatches", "score"],
+        "properties": {
+          "mismatches": { "type": "integer", "minimum": 0 },
+          "distance_to_exon": { "type": "integer", "minimum": 0 },
+          "distance_to_gene": { "type": "integer", "minimum": 0 },
+          "score": { "type": "number" },
+          "probabilities": {
+            "type": "array",
+            "items": { "type": "number" }
+          }
+        }
+      }
+    }
+  }
+}

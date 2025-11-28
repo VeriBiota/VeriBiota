@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veribiota.dev/schemas/prime/prime_edit_plan_v1.json",
+  "title": "VeriBiota prime edit plan v1",
+  "type": "object",
+  "required": ["ref_seq", "target_seq", "pegRNA", "net_edit_script"],
+  "properties": {
+    "ref_seq": { "type": "string" },
+    "target_seq": { "type": "string" },
+    "pegRNA": {
+      "type": "object",
+      "required": ["spacer", "pam", "rt_template", "pbs"],
+      "properties": {
+        "spacer": { "type": "string" },
+        "pam": { "type": "string" },
+        "rt_template": { "type": "string" },
+        "pbs": { "type": "string" }
+      }
+    },
+    "nick": {
+      "type": "object",
+      "properties": {
+        "spacer": { "type": "string" },
+        "pam": { "type": "string" },
+        "position": { "type": "integer" }
+      }
+    },
+    "net_edit_script": { "$ref": "#/$defs/edit_script" }
+  },
+  "$defs": {
+    "edit": {
+      "type": "object",
+      "required": ["type", "pos"],
+      "properties": {
+        "type": { "type": "string", "enum": ["ins", "del", "sub"] },
+        "pos": { "type": "integer", "minimum": 0 },
+        "len": { "type": "integer", "minimum": 1 },
+        "payload": { "type": "string" }
+      }
+    },
+    "edit_script": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edit" }
+    }
+  }
+}

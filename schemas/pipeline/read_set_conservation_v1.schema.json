@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veribiota.dev/schemas/pipeline/read_set_conservation_v1.json",
+  "title": "VeriBiota read-set conservation v1",
+  "type": "object",
+  "required": ["input_summary", "output_summary", "allowed_ops"],
+  "properties": {
+    "input_summary": { "$ref": "#/$defs/summary" },
+    "output_summary": { "$ref": "#/$defs/summary" },
+    "allowed_ops": {
+      "type": "object",
+      "properties": {
+        "sort": { "type": "boolean" },
+        "tag_only": { "type": "boolean" },
+        "mark_duplicates": { "type": "boolean" },
+        "allow_drop": { "type": "boolean" }
+      },
+      "additionalProperties": { "type": "boolean" }
+    }
+  },
+  "$defs": {
+    "sample": {
+      "type": "object",
+      "required": ["id", "reads"],
+      "properties": {
+        "id": { "type": "string" },
+        "reads": { "type": "integer", "minimum": 0 },
+        "checksum": { "type": "string" },
+        "lane": { "type": "string" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["read_count", "samples"],
+      "properties": {
+        "read_count": { "type": "integer", "minimum": 0 },
+        "samples": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/sample" }
+        },
+        "kmer_sketch": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

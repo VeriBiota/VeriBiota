@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veribiota.dev/schemas/hmm/pair_hmm_bridge_v1.json",
+  "title": "VeriBiota DP ↔ Pair-HMM bridge v1",
+  "type": "object",
+  "required": ["seqA", "seqB", "dp_scoring", "hmm_params", "dp_score", "hmm_score"],
+  "properties": {
+    "seqA": { "type": "string" },
+    "seqB": { "type": "string" },
+    "dp_scoring": {
+      "type": "object",
+      "required": ["match", "mismatch", "gap_open", "gap_extend"],
+      "properties": {
+        "match": { "type": "integer" },
+        "mismatch": { "type": "integer" },
+        "gap_open": { "type": "integer" },
+        "gap_extend": { "type": "integer" }
+      }
+    },
+    "hmm_params": {
+      "type": "object",
+      "required": ["transition", "emission"],
+      "properties": {
+        "transition": {
+          "type": "object",
+          "properties": {
+            "match_to_match": { "type": "number" },
+            "match_to_ins": { "type": "number" },
+            "match_to_del": { "type": "number" },
+            "ins_to_match": { "type": "number" },
+            "ins_to_ins": { "type": "number" },
+            "del_to_match": { "type": "number" },
+            "del_to_del": { "type": "number" }
+          }
+        },
+        "emission": {
+          "type": "object",
+          "required": ["match", "mismatch", "gap"],
+          "properties": {
+            "match": { "type": "number" },
+            "mismatch": { "type": "number" },
+            "gap": { "type": "number" }
+          }
+        }
+      }
+    },
+    "dp_score": { "type": "number" },
+    "hmm_score": { "type": "number" }
+  }
+}
