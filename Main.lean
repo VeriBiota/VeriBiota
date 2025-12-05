@@ -607,6 +607,13 @@ def runCli (args : List String) : IO UInt32 := do
       | Except.error msg => do
           IO.eprintln msg
           pure 1
+  | "check" :: "vcf" :: "vcf_normalization_v1" :: input :: rest =>
+      match parseCheckOptions rest with
+      | Except.ok opts =>
+          Biosim.CLI.Profile.runVcfNormalizationProfile (FilePath.mk input) opts.pretty ver buildId opts.snapshotOut?
+      | Except.error msg => do
+          IO.eprintln msg
+          pure 1
   | "--version" :: _ =>
       IO.println s!"veribiota {toolkitVersion} ({Lean.versionString})"
       pure 0

@@ -26,9 +26,9 @@ Profiles that:
 
 Tier 0 provides correctness and robustness guarantees for individual profile instances. It is suitable for CI gating and automated validation.
 
-### Tier 1 (planned)
+### Tier 1 (semantic)
 
-Profiles that extend Tier 0 with additional guarantees such as cross-instance invariants or stronger semantic properties (e.g., normalization invariants for VCF).
+Profiles that extend Tier 0 with additional guarantees such as cross-instance invariants or stronger semantic properties (e.g., normalization invariants for VCF). Example: `vcf_normalization_v1` (Tier 1) checks left-aligned/minimal variants and preserves variant meaning between pre/post normalization VCFs.
 
 ### Tier 2 (planned)
 
@@ -72,6 +72,7 @@ veribiota check edit edit_script_v1 <input.json> [--snapshot-out PATH] [--compac
 veribiota check edit edit_script_normal_form_v1 <input.json> [--snapshot-out PATH] [--compact]
 veribiota check prime prime_edit_plan_v1 <input.json> [--snapshot-out PATH] [--compact]
 veribiota check hmm pair_hmm_bridge_v1 <input.json> [--snapshot-out PATH] [--compact]
+veribiota check vcf vcf_normalization_v1 <input.json> [--snapshot-out PATH] [--compact]
 ```
 
 - `-` can be used instead of a path to read JSON from stdin.
@@ -100,6 +101,7 @@ Typical steps:
 ./veribiota check edit edit_script_normal_form_v1 Tests/profiles/edit_script_normal_form_v1/pass_simple_normal.json
 ./veribiota check prime prime_edit_plan_v1 Tests/profiles/prime_edit_plan_v1/pass_simple.json
 ./veribiota check hmm pair_hmm_bridge_v1 Tests/profiles/pair_hmm_bridge_v1/pass_simple.json
+./veribiota check vcf vcf_normalization_v1 Tests/profiles/vcf_normalization_v1/ok_minimal.json
 ```
 
 Consumers can swap in their own instances while keeping the same commands and exit-code expectations.
@@ -118,3 +120,10 @@ For stronger provenance, VeriBiota provides `snapshot_signature_v1` to bind a ve
 2. **Mirror schemas**: keep `schemas/*.schema.json` under version control for traceability.
 3. **Add CI checks**: run `veribiota check …` against your canonical instances; enforce `lake exe biosim_tests`.
 4. **Track signatures (optional)**: emit and archive `snapshot_signature_v1` JSON alongside results for provenance.
+
+## 8. Tier 1 example: vcf_normalization_v1
+
+- **Scope**: normalizes VCF records (left-align, minimal representation) and asserts the normalized variant preserves the original variant semantics.
+- **Inputs**: hashes of pre-/post-normalization VCFs, optional reference FASTA hash, per-variant original vs normalized locus/ref/alt and operations.
+- **Checks**: canonicalized original equals canonicalized normalized; normalized form matches canonical form; idempotence of normalization.
+- **Usage**: `veribiota check vcf vcf_normalization_v1 <input.json> [--snapshot-out PATH] [--compact]`.

@@ -26,6 +26,7 @@ An attested profile is a Tier 0 profile where every successful check emits a val
 | edit_script_normal_form_v1 | 0    | yes             |
 | prime_edit_plan_v1         | 0    | yes             |
 | pair_hmm_bridge_v1         | 0    | yes             |
+| vcf_normalization_v1       | 1    | yes (in progress) |
 
 Update this table as you wire CI signatures for each profile.
 

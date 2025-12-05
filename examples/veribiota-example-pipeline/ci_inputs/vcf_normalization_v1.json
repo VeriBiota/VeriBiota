@@ -1,0 +1,12 @@
+{
+  "input_vcf_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "normalized_vcf_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "variants": [
+    {
+      "locus": { "chrom": "chr1", "pos": 1 },
+      "original": { "ref": "AC", "alt": ["A"] },
+      "normalized": { "pos": 2, "ref": "C", "alt": [""] },
+      "operations": ["left_trim"]
+    }
+  ]
+}

@@ -176,6 +176,16 @@ Tier 0 profiles provide stable schemas, theorem anchors, golden fixtures, determ
 - Current Tier 0 & attested profiles: `global_affine_v1`, `edit_script_v1`, `edit_script_normal_form_v1`, `prime_edit_plan_v1`, `pair_hmm_bridge_v1` (see `docs/ATTESTED_PROFILES.md`).
 - Examples for external users: `examples/veribiota-example-pipeline/`.
 
+## 🤝 Integration Services
+For labs/companies running CRISPR, prime editing, or genomics pipelines:
+
+- Profile mapping (alignment/VCF/CRISPR steps → VeriBiota profiles).
+- Tier 0 attestation (CI + snapshot signatures).
+- Tier 1 semantics (e.g., VCF normalization invariants).
+- Verification reports (theorem sets, schemas, CI configs) for audit/compliance.
+
+Reach out to scope a Tier 0/1 assessment of your pipeline.
+
 ---
 
 ## 💼 For Enterprise & Research Partners

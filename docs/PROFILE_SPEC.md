@@ -10,7 +10,7 @@ This catalog defines what VeriBiota profiles judge across the stack. Profiles ar
 | prime_edit_plan_v1           | Planned      | CRISPR/Prime  | Helix              |
 | pair_hmm_bridge_v1           | Planned      | HMM/variant   | OGN                |
 | read_set_conservation_v1     | Planned      | pipeline      | OGN                |
-| vcf_normalization_v1         | Future       | variant       | OGN, external      |
+| vcf_normalization_v1         | Tier 1 (in progress) | variant       | OGN, external      |
 | offtarget_score_sanity_v1    | Future       | CRISPR        | Helix              |
 | snapshot_signature_v1        | Future       | provenance    | Helix, VeriBiota   |
 
@@ -113,17 +113,18 @@ This catalog defines what VeriBiota profiles judge across the stack. Profiles ar
   - Checksum or sketch consistency: aggregate hashes or sketches consistent with allowed operations; if dropping low-quality reads, the allowed pattern is codified.
 - **Theorem anchors (planned)**: `VB_PIPE_001` – multiset preservation under pure reordering; `VB_PIPE_002` – constrained drop rules.
 
-## Tier 2 – Future Profiles (Defined for alignment now)
+### 7. vcf_normalization_v1 (Status: Tier 1 – semantic)
 
-### 7. vcf_normalization_v1
-
-- **Purpose**: Guarantee that VCF entries are in a canonical normalized form (left-aligned, minimal, no redundant alleles).
-- **Inputs**: `ref_seq_window`; `vcf_record` fields (`CHROM`, `POS`, `REF`, `ALT[]`).
+- **Purpose**: Guarantee that VCF entries are normalized (left-aligned, minimal representation) without changing variant meaning.
+- **Inputs**: hashes/IDs of pre- and post-normalization VCFs; optional reference FASTA hash; per-variant records describing original vs normalized locus/ref/alt and operations applied.
 - **Verified properties**:
-  - Ref correctness: `REF` matches the reference genome at the given position.
-  - Left-alignment and minimality: indels are left-aligned; no redundant prefix/suffix that could be trimmed.
-  - ALT semantics: each `ALT` allele is a valid alternate sequence under minimal change.
-- **Theorem anchors (planned)**: `VB_VCF_001` – normalization is semantics-preserving; `VB_VCF_002` – uniqueness of normalized representation in the local window.
+  - Variant preservation: canonicalized original equals canonicalized normalized (no gain/loss of variants).
+  - Left-alignment/minimality: normalized record matches canonical form (no shared prefix/suffix remains).
+  - Ref/alt consistency: ref/alt remain valid after trimming and stay aligned to the reference context.
+  - Idempotence: re-normalizing an already normalized variant yields the same variant.
+- **Theorem anchors (Tier 1)**: `VB_VCF_001` – normalization preserves semantics; `VB_VCF_002` – normalization is idempotent/unique in window.
+
+## Tier 2 – Future Profiles (Defined for alignment now)
 
 ### 8. offtarget_score_sanity_v1
 

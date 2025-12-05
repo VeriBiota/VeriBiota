@@ -17,3 +17,16 @@ CLI and robustness
 - Hardened Tier 0 CLI behavior with snake_case summary fields and structured JSON errors.
 - Added malformed input fixtures and exit code coverage for Tier 0 profiles.
 - Ensured tests remain green via `lake exe biosim_tests`.
+
+## v0.2.0 – Tier 1 Semantics & Helix Integration
+
+Tier 1 semantics
+- Added `vcf_normalization_v1`: expanded schema, Lean checker, CLI route, golden fixtures, and documentation.
+- Snapshot support for VCF normalization via `--snapshot-out`.
+
+Helix integration scaffolding
+- Added `scripts/veribiota_integration.py` helper and `docs/HELIX_VERIFICATION.md` for backend/UI wiring.
+- Example pipeline updated to showcase snapshot signatures.
+
+Docs & positioning
+- Verification/Integration services and attested profile visibility expanded in README and docs.

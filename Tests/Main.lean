@@ -608,6 +608,8 @@ noncomputable def run : IO Unit := do
     (FilePath.mk "Tests/profiles/prime_edit_plan_v1")
   runProfileGoldenSuite "pair_hmm_bridge_v1" ["check", "hmm", "pair_hmm_bridge_v1"]
     (FilePath.mk "Tests/profiles/pair_hmm_bridge_v1")
+  runProfileGoldenSuite "vcf_normalization_v1" ["check", "vcf", "vcf_normalization_v1"]
+    (FilePath.mk "Tests/profiles/vcf_normalization_v1")
   IO.println "Artifact integration test passed"
 
 noncomputable unsafe def main : IO Unit :=

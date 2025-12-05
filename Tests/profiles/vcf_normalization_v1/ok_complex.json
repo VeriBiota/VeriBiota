@@ -1,0 +1,42 @@
+{
+  "input": {
+    "input_vcf_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "normalized_vcf_hash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "reference_fasta_hash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "variants": [
+      {
+        "locus": { "chrom": "chr2", "pos": 10 },
+        "original": { "ref": "TAA", "alt": ["TAG"] },
+        "normalized": { "pos": 10, "ref": "AA", "alt": ["AG"] },
+        "operations": ["left_trim", "right_trim"]
+      },
+      {
+        "locus": { "chrom": "chr2", "pos": 20 },
+        "original": { "ref": "CCT", "alt": ["C"] },
+        "normalized": { "pos": 21, "ref": "CT", "alt": [""] },
+        "operations": ["left_trim"]
+      }
+    ]
+  },
+  "expected": {
+    "theorems": ["VB_VCF_001", "VB_VCF_002"],
+    "status": "passed",
+    "signature": null,
+    "profile_version": "1.0.0",
+    "profile": "vcf_normalization_v1",
+    "instance": {
+      "variant_count": 2,
+      "normalized_ok_count": 2,
+      "all_variants_normalized": true,
+      "input_vcf_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "normalized_vcf_hash": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "reference_fasta_hash": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    },
+    "engine": {
+      "veribiota_version": "0.1.0",
+      "lean_version": "4.9.0",
+      "build_id": "dev"
+    }
+  },
+  "exit": 0
+}

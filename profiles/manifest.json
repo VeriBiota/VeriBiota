@@ -31,7 +31,7 @@
   },
   "vcf_normalization_v1": {
     "schema_path": "schemas/variant/vcf_normalization_v1.schema.json",
-    "schema": "sha256:4f9b422d7a63e2bbb29bfdb6567e517bed9f9ba088c12ccab5ce32fe82827704",
+    "schema": "sha256:1144c7a634c72f63da7241cb3c5c8b8d5f70ff40a7845501b4a7546a19e2cd06",
     "theorems": ["VB_VCF_001", "VB_VCF_002"]
   },
   "offtarget_score_sanity_v1": {
