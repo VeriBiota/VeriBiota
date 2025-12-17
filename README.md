@@ -1,5 +1,5 @@
 # VeriBiota
-[![Docs](https://img.shields.io/badge/docs-MkDocs%20Material-7A6BB2)](https://OmisGenomics.github.io/VeriBiota/)
+[![Docs](https://img.shields.io/badge/docs-MkDocs%20Material-7A6BB2)](https://omnisgenomics.github.io/VeriBiota/)
 [![CI](https://github.com/OmnisGenomics/VeriBiota/actions/workflows/ci.yml/badge.svg?label=ci)](https://github.com/OmnisGenomics/VeriBiota/actions/workflows/ci.yml)
 
 VeriBiota is a verification toolchain for biological / bioinformatics computation: it turns checks into deterministic, auditable artifacts (schemas, hashes, signatures) and makes them **re-runnable and hard to fake**.
