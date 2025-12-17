@@ -1,11 +1,13 @@
-# VeriBiota™ — Mathematically Proven Biology
+# VeriBiota — Verification Contracts + Attestation for Biology
 
-VeriBiota transforms biological and biochemical models into cryptographically signed, formally verified artifacts. Every reaction, rate law, and invariant is backed by theorem‑proven logic and a reproducible audit trail — turning biological simulation into a compliance‑grade science.
+VeriBiota turns biological / bioinformatics checks into **deterministic, auditable artifacts**: versioned JSON schemas, reproducible verdicts, and optional snapshot signatures for provenance.
 
-- Open standard for proof‑backed biological simulation
+Some profile surfaces are backed by non‑placeholder Lean theorem anchors today; others are contract-checked and fixture-tested while their theorem IDs remain reserved anchors. See `docs/PROFILE_SPEC.md` and `Biosim/VeriBiota/Theorems.lean` for the current map.
+
+- Open standard for verification bundles and profile checks
 - Deterministic JSON schemas for models, certificates, and checks
 - Ed25519 signatures + JWKS verification for authenticity
-- Formal proofs in Lean 4 with executable semantics on the roadmap
+- Lean 4 contracts for profile checks (proof depth varies by profile)
 
 See Why VeriBiota (docs/why.md) to understand the problems we solve and who benefits.
 
@@ -30,8 +32,8 @@ Tip: For a full signing round‑trip with a disposable local key, see Getting St
 ## Verification tiers
 
 - **Tier 0 – raw JSON**: emit model/trajectory/DAG JSON with no structural checks (not recommended for CI).
-- **Tier 1 – JSON-only checks**: run `veribiota-cli check-json` on `veribiota.edit_dag.v1` DAGs for fast structural sanity without Lean.
-- **Tier 2 – JSON + Lean**: generate a Lean EditDAG suite with `veribiota-cli generate-suite` and run `lake exe veribiota-check` (or the reusable GitHub Action) for proof-backed checks.
+- **Tier 1 – JSON-only checks**: run the Python adapter (`veribiota check-json`) on `veribiota.edit_dag.v1` DAGs for fast structural sanity without Lean.
+- **Tier 2 – JSON + Lean**: generate a Lean EditDAG suite (`veribiota generate-suite`) and run `lake exe veribiota-check` (or the reusable GitHub Action) to typecheck the generated suite against `EditDAG`.
 
 ## Explore the docs
 - Why VeriBiota (docs/why.md)
@@ -61,4 +63,4 @@ Tip: For a full signing round‑trip with a disposable local key, see Getting St
 ## Mission
 Make verified computation the default for life sciences.
 
-VeriBiota unifies Lean proofs, deterministic schemas, cryptographic signatures, and an executable runtime (roadmap) so that every model is provable, auditable, and portable — from a graduate thesis to FDA submissions.
+VeriBiota unifies Lean contracts, deterministic schemas, cryptographic signatures, and runtime evaluation so results are auditable and portable — from a graduate thesis to regulated pipelines.

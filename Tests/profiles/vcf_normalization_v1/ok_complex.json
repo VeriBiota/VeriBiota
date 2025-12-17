@@ -7,8 +7,8 @@
       {
         "locus": { "chrom": "chr2", "pos": 10 },
         "original": { "ref": "TAA", "alt": ["TAG"] },
-        "normalized": { "pos": 10, "ref": "AA", "alt": ["AG"] },
-        "operations": ["left_trim", "right_trim"]
+        "normalized": { "pos": 12, "ref": "A", "alt": ["G"] },
+        "operations": ["left_trim"]
       },
       {
         "locus": { "chrom": "chr2", "pos": 20 },

@@ -1,8 +1,8 @@
 site_name: VeriBiota
-site_description: Mathematically Proven Biology — proof‑backed biological simulation with formal verification and cryptographic signing.
+site_description: Verification bundles for bioinformatics — deterministic schemas, provenance, and proof-anchored checks where available.
 site_url: https://veribiota.github.io/VeriBiota/
-repo_url: https://github.com/VeriBiota/VeriBiota
-repo_name: VeriBiota/VeriBiota
+repo_url: https://github.com/OmnisGenomics/VeriBiota
+repo_name: OmnisGenomics/VeriBiota
 
 theme:
   name: material

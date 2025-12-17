@@ -12,7 +12,7 @@ jobs:
 
       - name: Fetch VeriBiota
         run: |
-          git clone https://github.com/VeriBiota/VeriBiota ../veribiota
+          git clone https://github.com/OmnisGenomics/VeriBiota ../veribiota
           cd ../veribiota
           lake update
           lake build

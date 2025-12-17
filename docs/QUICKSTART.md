@@ -1,8 +1,16 @@
 # VeriBiota Quickstart
 
-Get from zero to a runnable proof-backed profile check in minutes. For the full list of available and planned profiles, see [`docs/PROFILE_SPEC.md`](PROFILE_SPEC.md). For emitting provenance signatures, see [`docs/SNAPSHOTS.md`](SNAPSHOTS.md).
+Get from zero to a runnable profile check in minutes. Some profiles are backed by non‑placeholder Lean theorem anchors today (alignment + edit application); others are contract-checked and fixture-tested while their theorem IDs remain reserved anchors. For the full list, see [`docs/PROFILE_SPEC.md`](PROFILE_SPEC.md). For emitting provenance signatures, see [`docs/SNAPSHOTS.md`](SNAPSHOTS.md).
 
-## 1. Install the toolchain
+## 0. Choose an install path
+
+### Option A (recommended): use a release bundle
+
+Download the release archive for your platform and extract it. Run `./veribiota …` from the extracted directory (the bundle includes `schemas/` and `profiles/manifest.json`, which are required for `--snapshot-out`).
+
+### Option B: build from source
+
+## 1. Install the toolchain (source build only)
 
 ```bash
 curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \

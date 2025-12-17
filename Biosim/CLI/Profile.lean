@@ -8,8 +8,11 @@ import Biosim.VeriBiota.Prime.PrimeEditPlanV1
 import Biosim.VeriBiota.VCF.Normalization
 
 open Lean
+open Biosim.VeriBiota
 open Biosim.VeriBiota.Alignment
 open Biosim.VeriBiota.Edit
+open Biosim.VeriBiota.HMM
+open Biosim.VeriBiota.Prime
 open System
 
 namespace Biosim
@@ -85,8 +88,36 @@ structure ManifestEntry where
   schemaHash : String
   theorems : List String
 
+private def resolveManifestPath : IO FilePath := do
+  let cwd ← IO.currentDir
+  let mut candidates : List FilePath := []
+  match ← IO.getEnv "VERIBIOTA_DATA_DIR" with
+  | some root =>
+      let rootPath := FilePath.mk root
+      let envPath :=
+        match rootPath.fileName with
+        | some "manifest.json" => rootPath
+        | _ => rootPath / "profiles/manifest.json"
+      candidates := candidates.concat envPath
+  | none => pure ()
+  candidates := candidates.concat (cwd / "profiles/manifest.json")
+  let exePath ← IO.appPath
+  let exeDir :=
+    match exePath.parent with
+    | some dir => dir
+    | none => cwd
+  candidates := candidates.concat (exeDir / "profiles/manifest.json")
+
+  for cand in candidates do
+    if ← cand.pathExists then
+      return cand
+
+  let tried :=
+    String.intercalate "\n" <| candidates.map fun p => s!"- {p.toString}"
+  throw <| IO.userError s!"Manifest not found. Tried:\n{tried}\nHint: set VERIBIOTA_DATA_DIR to the extracted release bundle directory."
+
 private def loadManifestEntry (profileId : String) : IO ManifestEntry := do
-  let manifestPath := FilePath.mk "profiles/manifest.json"
+  let manifestPath ← resolveManifestPath
   let contents ← IO.FS.readFile manifestPath
   let manifest ←
     match Json.parse contents with
@@ -111,7 +142,7 @@ private def loadManifestEntry (profileId : String) : IO ManifestEntry := do
   let theorems ←
     match entry.getObjVal? "theorems" with
     | Except.ok (Json.arr arr) =>
-        let names := arr.toList.mapMaybe fun j =>
+        let names := arr.toList.filterMap fun j =>
           match j with
           | Json.str s => some s
           | _ => none
@@ -314,8 +345,8 @@ def decodeEditScriptNormalFormInstance (j : Json) :
     match j.getObjVal? "normalized_edits" with
     | Except.ok normJson =>
         match decodeEditsArray normJson "normalized_edits" with
-    | Except.ok v => pure (some v)
-    | Except.error err => Except.error err
+        | Except.ok v => pure (some v)
+        | Except.error err => Except.error err
     | Except.error _ => pure none
   pure { seqA, seqB, edits, normalizedEdits? }
 
@@ -365,7 +396,7 @@ def decodeHMMParams (j : Json) : Except String PairHMMBridgeV1.HMMParams := do
       , delToMatch := ← fieldFloat transJson "del_to_match" "transition.del_to_match"
       , delToDel := ← fieldFloat transJson "del_to_del" "transition.del_to_del" }
   let emission : PairHMMBridgeV1.Emission :=
-    { match := ← fieldFloat emJson "match" "emission.match"
+    { matchScore := ← fieldFloat emJson "match" "emission.match"
       , mismatch := ← fieldFloat emJson "mismatch" "emission.mismatch"
       , gap := ← fieldFloat emJson "gap" "emission.gap" }
   pure { transition, emission }
@@ -396,7 +427,8 @@ def decodeVcfVariant (locus : Json) (block : Json) (label : String) :
   let chrom ← requireField (locus.getObjValAs? String "chrom") s!"{label}.locus.chrom"
   let pos ← requireField (locus.getObjValAs? Nat "pos") s!"{label}.locus.pos"
   let ref ← requireField (block.getObjValAs? String "ref") s!"{label}.ref"
-  let alt ← decodeAltArray block s!"{label}.alt"
+  let altJson ← requireField (block.getObjVal? "alt") s!"{label}.alt"
+  let alt ← decodeAltArray altJson s!"{label}.alt"
   pure { chrom, pos, ref, alt }
 
 def decodeVcfNormalizationInstance (j : Json) :
@@ -552,7 +584,7 @@ private def renderVcfNormalizationPayload (inst : VCF.Normalization.Instance) (s
     (results : List Bool) (ver : String) (buildId : String)
     (err? : Option String := none) : (Json × Json) :=
   let total := inst.variants.length
-  let okCount := results.count (· = true)
+  let okCount := results.count true
   let detailFields : List (String × Json) :=
     [ ("variant_count", jsonNat total)
     , ("normalized_ok_count", jsonNat okCount)

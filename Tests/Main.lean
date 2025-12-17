@@ -86,7 +86,7 @@ structure SigningFixture where
   originalChecks : ByteArray
   originalCert : ByteArray
 
-noncomputable def generateSignedArtifacts (dir : FilePath) :
+def generateSignedArtifacts (dir : FilePath) :
     IO SigningFixture := do
   let keyPath := dir / "test-ed25519.pem"
   let pubDer := dir / "test-ed25519.der"
@@ -436,7 +436,7 @@ private def runProfileGoldenSuite (profileName : String) (cliArgs : List String)
   assertM dirExists s!"Profile fixtures missing at {dir}"
   let ls ← IO.Process.output
     { cmd := "bash"
-      , args := #["-lc", s!"ls -1 {dir}/**/*.json"]
+      , args := #["-lc", s!"find {dir} -type f -name '*.json' -print | sort"]
       , stderr := .piped }
   if ls.exitCode ≠ 0 then
     throw <| IO.userError s!"Failed to enumerate profile fixtures: {ls.stderr}"
@@ -503,7 +503,7 @@ private def checkRuntimeChecks (j : Json) : IO Unit := do
       assertM hasInvariant "Checks JSON missing lin_invariant entry with proofId"
   | _ => throw <| IO.userError "Checks JSON missing `checks` array"
 
-noncomputable def determinismTest : IO Unit := do
+def determinismTest : IO Unit := do
   withTestDir "determinism" fun dir => do
     let paths := Biosim.Examples.CertificateDemo.ArtifactPaths.fromRoot dir
     discard <| Biosim.Examples.CertificateDemo.saveArtifacts paths {}
@@ -518,7 +518,7 @@ noncomputable def determinismTest : IO Unit := do
     assertBytesEq firstCert secondCert "Certificate JSON is not deterministic"
     assertBytesEq firstChecks secondChecks "Checks JSON is not deterministic"
 
-noncomputable def crlfNormalizationTest : IO Unit := do
+def crlfNormalizationTest : IO Unit := do
   withTestDir "crlf" fun dir => do
     let paths := Biosim.Examples.CertificateDemo.ArtifactPaths.fromRoot dir
     discard <| Biosim.Examples.CertificateDemo.saveArtifacts paths {}
@@ -531,7 +531,7 @@ noncomputable def crlfNormalizationTest : IO Unit := do
     assertBytesEq canonCert origCert "Certificate canonicalization failed after CRLF"
     assertBytesEq canonChecks origChecks "Checks canonicalization failed after CRLF"
 
-noncomputable def tamperExitCodesTest : IO Unit := do
+def tamperExitCodesTest : IO Unit := do
   withTestDir "tamper" fun dir => do
     let fixture ← generateSignedArtifacts dir
     let cfg : VerifyConfig :=
@@ -547,7 +547,16 @@ noncomputable def tamperExitCodesTest : IO Unit := do
       "Payload tamper should trigger hash mismatch"
     writeBytes fixture.checksPath fixture.originalChecks
     mutateSignature fixture.checksPath fun sig =>
-      { sig with jws := "A" ++ sig.jws.drop 1 }
+      match sig.jws.splitOn "." with
+      | [header, payload, signature] =>
+          let mutated :=
+            match signature.data with
+            | [] => signature
+            | c :: rest =>
+                let c' := if c = 'A' then 'B' else 'A'
+                String.mk (c' :: rest)
+          { sig with jws := String.intercalate "." [header, payload, mutated] }
+      | _ => sig
     let codeSig ← runVerify cfg
     assertEq codeSig exitInvalidSignature
       "Signature tamper should trigger invalid signature"
@@ -564,7 +573,7 @@ noncomputable def tamperExitCodesTest : IO Unit := do
       "Missing signature not detected"
 
 /-- Integration test: regenerate artifacts and validate metadata. -/
-noncomputable def run : IO Unit := do
+def run : IO Unit := do
   determinismTest
   crlfNormalizationTest
   tamperExitCodesTest
@@ -612,7 +621,10 @@ noncomputable def run : IO Unit := do
     (FilePath.mk "Tests/profiles/vcf_normalization_v1")
   IO.println "Artifact integration test passed"
 
-noncomputable unsafe def main : IO Unit :=
+unsafe def main : IO Unit :=
   run
 
 end Tests
+
+unsafe def main : IO Unit :=
+  Tests.run

@@ -21,9 +21,14 @@ Each verdict JSON includes `profile_version`, `theorems`, and an `engine` block 
 - name: Download VeriBiota
   run: |
     VER=0.1.0
-    curl -L "https://github.com/<org>/VeriBiota/releases/download/v${VER}/veribiota-linux-amd64" -o veribiota
-    chmod +x veribiota
-    echo "VERIBIOTA_EXE=$PWD/veribiota" >> $GITHUB_ENV
+    PLATFORM=linux-amd64
+    BUNDLE="veribiota-v${VER}-${PLATFORM}"
+    curl -L "https://github.com/<org>/VeriBiota/releases/download/v${VER}/${BUNDLE}.tar.gz" -o "${BUNDLE}.tar.gz"
+    tar -xzf "${BUNDLE}.tar.gz"
+    chmod +x "${BUNDLE}/veribiota"
+    echo "VERIBIOTA_EXE=$PWD/${BUNDLE}/veribiota" >> $GITHUB_ENV
+    # Optional (only needed if you move the binary away from the bundle directory):
+    echo "VERIBIOTA_DATA_DIR=$PWD/${BUNDLE}" >> $GITHUB_ENV
 
 - name: Run profile check
   run: |

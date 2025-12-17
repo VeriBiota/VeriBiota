@@ -21,10 +21,10 @@ Profiles that:
 - Have a versioned JSON schema in `schemas/`.
 - Are listed in `docs/PROFILE_SPEC.md` with a stable identifier.
 - Are present in `profiles/manifest.json` with schema hashes and theorem anchors.
-- Have Lean theorems registered in `Biosim/VeriBiota/Theorems.lean`.
+- Have theorem IDs registered in `Biosim/VeriBiota/Theorems.lean` (some IDs may be **reserved anchors** until their non-placeholder proofs land).
 - Have a CLI checker and tests covering valid, failing, and malformed instances with exit-code assertions.
 
-Tier 0 provides correctness and robustness guarantees for individual profile instances. It is suitable for CI gating and automated validation.
+Tier 0 provides **deterministic contract checking** and robustness guarantees for individual profile instances (schema validation, stable verdict shape, exit codes, fixtures, snapshot signatures). Whether a profile’s theorem IDs are backed by non-placeholder Lean theorems is tracked separately and is part of the product honesty story.
 
 ### Tier 1 (semantic)
 
@@ -46,6 +46,8 @@ The current Tier 0 set is maintained in `docs/PROFILE_SPEC.md` and `profiles/man
 - `prime_edit_plan_v1` — prime editing plan structure, including pegRNA and nicking design planning.
 - `pair_hmm_bridge_v1` — bridge between alignment-style scoring and Pair-HMM likelihoods.
 
+As of the current repo state, only `global_affine_v1` and `edit_script_v1` have non-placeholder theorem anchors; the other Tier 0 profiles are contract-checked and fixture-tested while their theorem IDs remain reserved anchors.
+
 ---
 
 ## 3. Guarantees
@@ -54,6 +56,7 @@ For Tier 0 profiles, VeriBiota guarantees:
 
 - **Schema correctness** — each profile has a JSON schema that defines valid instances; the CLI validates inputs before semantic checks.
 - **Theorem-anchored checking** — every Tier 0 profile is anchored to theorem IDs in `Biosim/VeriBiota/Theorems.lean`, tied via `profiles/manifest.json`.
+- **Truth in advertising** — “theorem anchored” means “anchored to theorem IDs”; “proof-backed” means those theorem IDs are non-placeholder Lean theorems (see `Biosim/VeriBiota/Theorems.lean`).
 - **Deterministic exit codes**
   - `0`: success (schema + proof obligations hold)
   - `2`: checked but failed obligations
@@ -97,11 +100,16 @@ Typical steps:
 3. Run profile checks over representative instances, e.g.:
 
 ```bash
-./veribiota check alignment global_affine_v1 Tests/profiles/global_affine_v1/match_pass.json
-./veribiota check edit edit_script_normal_form_v1 Tests/profiles/edit_script_normal_form_v1/pass_simple_normal.json
-./veribiota check prime prime_edit_plan_v1 Tests/profiles/prime_edit_plan_v1/pass_simple.json
-./veribiota check hmm pair_hmm_bridge_v1 Tests/profiles/pair_hmm_bridge_v1/pass_simple.json
-./veribiota check vcf vcf_normalization_v1 Tests/profiles/vcf_normalization_v1/ok_minimal.json
+jq .input Tests/profiles/global_affine_v1/match_pass.json \
+  | ./veribiota check alignment global_affine_v1 -
+jq .input Tests/profiles/edit_script_normal_form_v1/pass_simple_normal.json \
+  | ./veribiota check edit edit_script_normal_form_v1 -
+jq .input Tests/profiles/prime_edit_plan_v1/pass_simple.json \
+  | ./veribiota check prime prime_edit_plan_v1 -
+jq .input Tests/profiles/pair_hmm_bridge_v1/pass_simple.json \
+  | ./veribiota check hmm pair_hmm_bridge_v1 -
+jq .input Tests/profiles/vcf_normalization_v1/ok_minimal.json \
+  | ./veribiota check vcf vcf_normalization_v1 -
 ```
 
 Consumers can swap in their own instances while keeping the same commands and exit-code expectations.

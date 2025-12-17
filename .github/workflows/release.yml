@@ -14,9 +14,9 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            asset: veribiota-linux-amd64
+            platform: linux-amd64
           - os: macos-latest
-            asset: veribiota-macos-universal
+            platform: macos-universal
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -35,14 +35,21 @@ jobs:
       - name: Build veribiota
         run: lake build veribiota
 
-      - name: Package binary
+      - name: Package release bundle (binary + schemas + manifest)
         run: |
           mkdir -p dist
-          cp .lake/build/bin/veribiota dist/${{ matrix.asset }}
+          bundle="veribiota-${{ github.ref_name }}-${{ matrix.platform }}"
+          mkdir -p "dist/$bundle/profiles"
+          cp .lake/build/bin/veribiota "dist/$bundle/veribiota"
+          cp -r schemas "dist/$bundle/schemas"
+          cp profiles/manifest.json "dist/$bundle/profiles/manifest.json"
+          cp LICENSE "dist/$bundle/LICENSE"
+          cp NOTICE "dist/$bundle/NOTICE"
+          tar -czf "dist/$bundle.tar.gz" -C dist "$bundle"
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/${{ matrix.asset }}
+          files: dist/veribiota-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -2,7 +2,7 @@
 
 **Status:** Draft  \
 **Bundle target:** `bundle_version: 0.1`  \
-**Purpose:** Define the verification substrate (VeriBundle, claims, evidence, signing, runner surface) so any engine can emit and check proof-backed biology artifacts.
+**Purpose:** Define the verification substrate (VeriBundle, claims, evidence, signing, runner surface) so any engine can emit and check proof-backed biology artifacts (where proofs exist) with deterministic schemas and attestable outputs.
 
 ## 1) Scope
 ### 1.1 What VeriBiota is
