@@ -56,6 +56,9 @@ nav:
       - Invariants: invariants.md
       - Runtime Checks: runtime_checks.md
       - Simulator Integration: simulator-integration.md
+  - Specs:
+      - VERIBIOTA-0001 Runtime Checks: spec/VERIBIOTA-0001-runtime-checks.md
+      - VERIBIOTA-0002 VeriBundle & Claims: spec/VERIBIOTA-0002-veribundle-spec.md
   - CLI: cli.md
   - QA & Compliance:
       - QA Checklist: qa_checklist.md

@@ -1,0 +1,99 @@
+{
+  "bundle_version": "0.1",
+  "subject": {
+    "kind": "VariantSet",
+    "format": "vcf",
+    "digest": { "alg": "sha256", "hex": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" },
+    "label": "demo variant set"
+  },
+  "provenance": {
+    "inputs": [
+      {
+        "name": "sample.cram",
+        "digest": { "alg": "sha256", "hex": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+        "role": "reads"
+      }
+    ],
+    "references": [
+      {
+        "name": "GRCh38",
+        "digest": { "alg": "sha256", "hex": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" },
+        "role": "reference"
+      }
+    ],
+    "annotations": [
+      {
+        "name": "gencode.v44",
+        "digest": { "alg": "sha256", "hex": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+        "role": "transcripts"
+      }
+    ],
+    "software": [
+      {
+        "name": "ogn",
+        "version": "1.2.3",
+        "container_digest": { "alg": "sha256", "hex": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" },
+        "git_commit": "deadbeef"
+      }
+    ],
+    "parameters": { "min_mapq": 30 },
+    "timestamp_utc": "2025-12-05T00:00:00Z"
+  },
+  "assumption_defs": [
+    {
+      "id": "vb.assumption.reference_build=GRCh38",
+      "text": "All coordinates are interpreted in GRCh38."
+    }
+  ],
+  "claims": [
+    {
+      "id": "vb.variant.normalized",
+      "title": "Variants are normalized vs reference",
+      "scope": { "cohort": "sample" },
+      "severity": "blocker",
+      "assumptions": ["vb.assumption.reference_build=GRCh38"],
+      "result": "pass",
+      "reason": "All variants left-aligned and parsimonious",
+      "evidence": [
+        {
+          "type": "replay_trace",
+          "tcb_mode": "replayable",
+          "attachment_digest": { "alg": "sha256", "hex": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" },
+          "summary": { "normalizer": "veribiota-norm@0.1", "count": 12345 }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "overall_result": "pass",
+    "highest_severity_failed": "none",
+    "profile": {
+      "id": "vb.profile.research_default@0.1.0",
+      "digest": { "alg": "sha256", "hex": "1111111111111111111111111111111111111111111111111111111111111111" }
+    }
+  },
+  "attachments": [
+    {
+      "name": "norm-trace",
+      "media_type": "application/cbor",
+      "digest": { "alg": "sha256", "hex": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" },
+      "size_bytes": 9000,
+      "privacy": "public"
+    }
+  ],
+  "tcb": [
+    {
+      "name": "veribiota-runner",
+      "version": "0.1.0",
+      "digest": { "alg": "sha256", "hex": "9999999999999999999999999999999999999999999999999999999999999999" },
+      "mode": "replayable"
+    }
+  ],
+  "ir": {
+    "variant_ir": {
+      "kind": "File",
+      "format": "veribiota.ir.variant@0.1",
+      "digest": { "alg": "sha256", "hex": "2222222222222222222222222222222222222222222222222222222222222222" }
+    }
+  }
+}
