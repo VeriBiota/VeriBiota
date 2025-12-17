@@ -4,6 +4,7 @@ engine/biosim-checks/target/
 target/
 node_modules/
 venv/
+.venv/
 *.tmp
 .DS_Store
 site/

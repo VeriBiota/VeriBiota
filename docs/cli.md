@@ -1,5 +1,12 @@
 # VeriBiota CLI & Adapter
 
+This repository ships two entrypoints:
+
+- `./veribiota` — the Lean-built CLI (wrapper around `lake exe veribiota`).
+- `veribiota` — the Python EditDAG adapter CLI (installed via `python -m pip install .`).
+
+If you install the Python package, use `./veribiota` for the Lean CLI examples below to avoid name conflicts.
+
 ## Install & Build (Lean CLI)
 ```bash
 elan toolchain install $(cat lean-toolchain)
@@ -36,11 +43,13 @@ lake update && lake build
 # signed-soft (CI/staging):
 export VERIBIOTA_SIG_MODE=signed-soft
 export VERIBIOTA_SIG_KID=veribiota-prod-2025-q1
-export VERIBIOTA_SIG_KEY="$(cat ~/veribiota-secrets/veribiota_ed25519.pem)"
+export VERIBIOTA_SIG_KEY=~/veribiota-secrets/veribiota_ed25519.pem
 ./veribiota --emit-all --out build/artifacts
 
 # signed-enforced (prod):
 export VERIBIOTA_SIG_MODE=signed-enforced
+export VERIBIOTA_SIG_KID=veribiota-prod-2025-q1
+export VERIBIOTA_SIG_KEY=~/veribiota-secrets/veribiota_ed25519.pem
 ./veribiota --emit-all --out build/artifacts
 ```
 
@@ -68,17 +77,18 @@ cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval --
 
 ```bash
 # newline-delimited snapshots (JSONL) -> drift/positivity checks
-./veribiota verify results build/artifacts/checks/sir-demo.json results.jsonl \
-  --jwks security/jwks.json --print-details
+./veribiota verify results build/artifacts/checks/sir-demo.json results.jsonl
 
 # Exit codes
 #   0 = ok
-#   2 = checks-violation (positivity / invariant drift)
-#   3 = signature-mismatch (digest mismatch)
-#   4 = schema-error (invalid checks JSON)
+#   1 = invalid results JSON / mismatch / biosim-eval missing or failed
+#   2 = empty results file
+#   3 = checks digest mismatch
+#   4 = invalid checks JSON (schema/parse error)
 ```
 
-The CLI requires `biosim-eval` and enforces the exit codes above. See
+The verifier requires `biosim-eval` under `target/{release,debug}`. If you just
+want the “build it if needed then run” path, use `make verify-results`. See
 `docs/simulator-integration.md` for adapter options.
 
 ## Simulate (demo)
