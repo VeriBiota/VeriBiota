@@ -40,9 +40,21 @@ jobs:
           mkdir -p dist
           bundle="veribiota-${{ github.ref_name }}-${{ matrix.platform }}"
           mkdir -p "dist/$bundle/profiles"
-          cp .lake/build/bin/veribiota "dist/$bundle/veribiota"
+          mkdir -p "dist/$bundle/.github/scripts"
+          cp .lake/build/bin/veribiota "dist/$bundle/veribiota.bin"
+          cat > "dist/$bundle/veribiota" <<EOF
+          #!/usr/bin/env bash
+          set -euo pipefail
+          DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+          export VERIBIOTA_VERSION="\${VERIBIOTA_VERSION:-${{ github.ref_name }}}"
+          export VERIBIOTA_BUILD_ID="\${VERIBIOTA_BUILD_ID:-${{ github.sha }}}"
+          export VERIBIOTA_DATA_DIR="\${VERIBIOTA_DATA_DIR:-\$DIR}"
+          exec "\$DIR/veribiota.bin" "\$@"
+          EOF
+          chmod +x "dist/$bundle/veribiota" "dist/$bundle/veribiota.bin"
           cp -r schemas "dist/$bundle/schemas"
           cp profiles/manifest.json "dist/$bundle/profiles/manifest.json"
+          cp .github/scripts/validate_snapshots.py "dist/$bundle/.github/scripts/validate_snapshots.py"
           cp LICENSE "dist/$bundle/LICENSE"
           cp NOTICE "dist/$bundle/NOTICE"
           tar -czf "dist/$bundle.tar.gz" -C dist "$bundle"

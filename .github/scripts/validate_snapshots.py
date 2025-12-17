@@ -28,6 +28,17 @@ def load_schema(repo_root: Path) -> dict:
         return json.load(f)
 
 
+def find_repo_root(start: Path) -> Path:
+    current = start
+    while True:
+        candidate = current / "schemas" / "provenance" / "snapshot_signature_v1.schema.json"
+        if candidate.is_file():
+            return current
+        if current.parent == current:
+            raise FileNotFoundError("Unable to locate schemas/provenance/snapshot_signature_v1.schema.json")
+        current = current.parent
+
+
 def validate_signature(schema: dict, path: Path) -> None:
     with path.open("r", encoding="utf-8") as f:
         payload = json.load(f)
@@ -48,7 +59,11 @@ def main() -> int:
         sys.stderr.write("Usage: validate_snapshots.py <dir>\n")
         return 1
     target_dir = Path(sys.argv[1]).resolve()
-    repo_root = Path(__file__).resolve().parent.parent
+    try:
+        repo_root = find_repo_root(Path(__file__).resolve().parent)
+    except FileNotFoundError as err:
+        sys.stderr.write(f"{err}\n")
+        return 1
     schema = load_schema(repo_root)
     if not target_dir.is_dir():
         sys.stderr.write(f"Not a directory: {target_dir}\n")

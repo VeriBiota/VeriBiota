@@ -615,7 +615,7 @@ def runCli (args : List String) : IO UInt32 := do
           IO.eprintln msg
           pure 1
   | "--version" :: _ =>
-      IO.println s!"veribiota {toolkitVersion} ({Lean.versionString})"
+      IO.println s!"veribiota {ver} ({Lean.versionString})"
       pure 0
   | "--schema-info" :: _ =>
       schemaInfo
