@@ -5,6 +5,7 @@ import Biosim.VeriBiota.Edit.EditScriptNormalFormV1
 import Biosim.VeriBiota.Edit.EditScriptV1
 import Biosim.VeriBiota.HMM.PairHMMBridgeV1
 import Biosim.VeriBiota.Prime.PrimeEditPlanV1
+import Biosim.VeriBiota.Provenance.SnapshotSignatureV1
 import Biosim.VeriBiota.VCF.Normalization
 
 open Lean
@@ -83,10 +84,7 @@ private def requireField {α} : Except String α → String → Except String α
   | Except.ok v, _ => Except.ok v
   | Except.error _, label => Except.error s!"missing or invalid field '{label}'"
 
-structure ManifestEntry where
-  schemaPath : String
-  schemaHash : String
-  theorems : List String
+abbrev ManifestEntry := VeriBiota.Provenance.SnapshotSignatureV1.ManifestEntry
 
 private def resolveManifestPath : IO FilePath := do
   let cwd ← IO.currentDir
@@ -162,22 +160,11 @@ private def emitSnapshotSignature (outPath : FilePath) (profileId profileVersion
   let manifest ← loadManifestEntry profileId
   let timestamp ← Biosim.IO.currentIsoTimestamp
   let digestHex ← Biosim.IO.sha256HexBytesNear inputHint rawInput
-  let payload :=
-    Json.mkObj
-      [ ("snapshot_profile", Json.str profileId)
-      , ("snapshot_profile_version", Json.str profileVersion)
-      , ("snapshot_hash", Json.str s!"sha256:{digestHex}")
-      , ("schema_hash", Json.str manifest.schemaHash)
-      , ("schema_id", Json.str manifest.schemaPath)
-      , ("theorem_ids", Json.arr <| manifest.theorems.map Json.str |>.toArray)
-      , ("veribiota_build_id", Json.str buildId)
-      , ("veribiota_version", Json.str ver)
-      , ("lean_version", Json.str Lean.versionString)
-      , ("timestamp_utc", Json.str timestamp)
-      , ("verification_result", Json.str status)
-      , ("instance_summary", instanceSummary)
-      ]
-  let bytes := (payload.pretty 2).toUTF8
+  let sig :=
+    VeriBiota.Provenance.SnapshotSignatureV1.SnapshotSignature.mkFromDigest
+      profileId profileVersion status instanceSummary
+      digestHex manifest ver buildId timestamp
+  let bytes := (sig.toJson.pretty 2).toUTF8
   Biosim.IO.writeFileAtomic outPath bytes
 
 def decodeAlignmentInstance (j : Json) : Except String GlobalAffineV1.Instance := do

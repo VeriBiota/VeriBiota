@@ -13,6 +13,7 @@ Tests/tmp/
 
 # Generated Lean suites (EditDAG DAGs) – not committed
 **/Biosim/VeriBiota/*/*.lean
+!Biosim/VeriBiota/Provenance/*.lean
 
 # Local security material (never commit real keys or JWKS)
 security/jwks.json
