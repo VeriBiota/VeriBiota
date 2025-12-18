@@ -3,6 +3,7 @@ name: CodeQL
 on:
   push:
     branches: [ "main", "master" ]
+    tags-ignore: [ "v*" ]
   pull_request:
     branches: [ "main", "master" ]
 
@@ -27,7 +28,19 @@ jobs:
         with:
           languages: ${{ matrix.language }}
 
+      # For C/C++, default autobuild tends to pick the repo root Makefile (which
+      # triggers `lake`/Lean builds here) and can turn CodeQL into a >1h job.
+      # We only need C++ coverage for the tiny adapter demo, so build that
+      # explicitly instead.
+      - name: Build C++ adapter (CMake)
+        if: matrix.language == 'c-cpp'
+        run: |
+          set -euo pipefail
+          cmake -S adapters/cpp -B adapters/cpp/build -DCMAKE_BUILD_TYPE=Release
+          cmake --build adapters/cpp/build --config Release -j"$(nproc)"
+
       - name: Autobuild
+        if: matrix.language != 'c-cpp'
         uses: github/codeql-action/autobuild@v3
 
       - name: Perform CodeQL Analysis

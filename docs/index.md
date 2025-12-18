@@ -46,6 +46,7 @@ Tip: For a full signing round‑trip with a disposable local key, see Getting St
 - Invariants (docs/invariants.md)
 - Runtime Checks (docs/runtime_checks.md)
 - DAG Schema (docs/schema/edit_dag.md)
+- Code Scanning (CodeQL) (docs/code_scanning.md)
 - QA Checklist (docs/qa_checklist.md)
 - Roadmap (docs/roadmap.md)
 
