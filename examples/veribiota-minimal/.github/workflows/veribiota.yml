@@ -1,0 +1,26 @@
+name: veribiota-minimal
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  veribiota:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: VeriBiota (container) — check + snapshot
+        run: |
+          set -euo pipefail
+          docker pull ghcr.io/omnisgenomics/veribiota:v0.2.1
+          mkdir -p ci_signatures
+          docker run --rm -v "$PWD":/work -w /work ghcr.io/omnisgenomics/veribiota:v0.2.1 \
+            check alignment global_affine_v1 ci_inputs/global_affine_v1.json \
+            --snapshot-out ci_signatures/global_affine_v1.sig.json --compact
+
+      - name: Upload snapshot_signature_v1 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: veribiota-snapshots
+          path: ci_signatures/*.json

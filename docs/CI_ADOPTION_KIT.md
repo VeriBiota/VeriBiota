@@ -30,7 +30,7 @@ jobs:
   tier0:
     runs-on: ubuntu-latest
     env:
-      VERIBIOTA_TAG: v0.2.0 # TODO: pin to the release you adopt
+      VERIBIOTA_TAG: v0.2.1 # TODO: pin to the release you adopt
       VERIBIOTA_PLATFORM: linux-amd64
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +70,6 @@ On releases, a container image is published to GHCR:
 Example:
 
 ```bash
-docker run --rm -v "$PWD":/work -w /work ghcr.io/omnisgenomics/veribiota:v0.2.0 \
+docker run --rm -v "$PWD":/work -w /work ghcr.io/omnisgenomics/veribiota:v0.2.1 \
   check alignment global_affine_v1 ci_inputs/global_affine_v1.json --snapshot-out ci_signatures/global_affine_v1.sig.json --compact
 ```

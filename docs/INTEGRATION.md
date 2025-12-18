@@ -24,7 +24,7 @@ Each verdict JSON includes `profile_version`, `theorems`, and an `engine` block 
 ```yaml
 - name: Download VeriBiota
   run: |
-    VERIBIOTA_TAG=v0.2.0   # TODO: pin to the release you adopt
+    VERIBIOTA_TAG=v0.2.1   # TODO: pin to the release you adopt
     PLATFORM=linux-amd64
     BUNDLE="veribiota-${VERIBIOTA_TAG}-${PLATFORM}"
     curl -L "https://github.com/OmnisGenomics/VeriBiota/releases/download/${VERIBIOTA_TAG}/${BUNDLE}.tar.gz" -o "${BUNDLE}.tar.gz"

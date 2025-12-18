@@ -1,15 +1,17 @@
 # Roadmap
 
-## Current
-- Open‑core release (v0.10.2‑pilot): full proof‑to‑certificate chain.
-- Deterministic builds; canonicalization + signing; CI tamper harness.
+## Now (v0.2.x)
+- Ship a credible adoption wedge: releases (linux/macos) + GHCR container + CI templates.
+- Keep “proven vs contract-checked” brutally explicit (see `docs/PROFILE_SPEC.md` + `Biosim/VeriBiota/Theorems.lean`).
+- Grow the library of ready-to-run examples and CI “drop-in” templates.
 
-## In progress
-- Runtime engine (Rust/CUDA): verified ODE/SSA execution against checks.
-- Audit ledger + portal: hosted verification with immutable provenance.
+## Next proofs (highest leverage)
+- `pair_hmm_bridge_v1`: replace `VB_HMM_001`/`VB_HMM_002` placeholders with real mapping + equivalence theorems (OGN/variant-calling leverage).
+- `vcf_normalization_v1`: replace `VB_VCF_001`/`VB_VCF_002` placeholders with real semantics-preservation + normalization uniqueness/idempotence.
 
-## Near‑term
-- Partner integrations across pharma, synthetic biology, and academia.
-- Enterprise offerings: private signer, audit ledger, SLA support.
+## Later
+- Pipeline invariants (`read_set_conservation_v1`) and additional domain checks (off-target scoring, etc.).
+- Runtime engine checks (Rust/CUDA) for scalable enforcement, driven by real user demand.
 
-Schemas under `schema/` are treated as immutable per major version. Future changes will ship as `v2` alongside `v1` until migration.
+## Compatibility policy
+Schemas under `schema/` and `schemas/` are treated as immutable within a major version. Changes ship as `v2` alongside `v1` until migration.

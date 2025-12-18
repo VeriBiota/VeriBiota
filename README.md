@@ -65,7 +65,24 @@ Option A: use a release bundle (recommended for CI/users).
 - Download and extract `veribiota-<tag>-<platform>.tar.gz`.
 - Run `./veribiota --version` from the extracted directory (it includes `schemas/` + `profiles/manifest.json`).
 
-Option B: build from source (Lean CLI).
+Option B: run in CI via the container (no Lean toolchain install).
+
+Copy/paste GitHub Actions snippet (pin the tag; don’t use floating `latest` in regulated pipelines):
+
+```yaml
+- uses: actions/checkout@v4
+
+- name: VeriBiota (container) — check + snapshot
+  run: |
+    set -euo pipefail
+    docker pull ghcr.io/omnisgenomics/veribiota:v0.2.1
+    mkdir -p ci_signatures
+    docker run --rm -v "$PWD":/work -w /work ghcr.io/omnisgenomics/veribiota:v0.2.1 \
+      check alignment global_affine_v1 examples/profiles/global_affine_v1/match.json \
+      --snapshot-out ci_signatures/global_affine_v1.sig.json --compact
+```
+
+Option C: build from source (Lean CLI).
 
 ```bash
 elan toolchain install $(cat lean-toolchain)
@@ -94,6 +111,25 @@ Run the Lean test suite used in CI:
 
 ```bash
 lake exe biosim_tests
+```
+
+## What fails when things are wrong (exit codes)
+VeriBiota Tier 0 exit codes are deterministic (see `docs/TIER0_COMPLIANCE.md`):
+
+- `0`: passed obligations
+- `2`: checked but failed obligations (contract violation)
+- `1`: malformed input or internal error
+
+Examples:
+
+```bash
+# Failed obligations (exit 2)
+./veribiota check alignment global_affine_v1 examples/profiles/global_affine_v1/mismatch_fail.json --compact
+echo $?
+
+# Malformed JSON (exit 1)
+echo '{' | ./veribiota check alignment global_affine_v1 -
+echo $?
 ```
 
 ## Signing (Ed25519 + JWKS) and snapshots (optional)
