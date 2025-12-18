@@ -300,7 +300,7 @@ jobs:
 
       - name: Upload build artifacts
         if: github.ref == 'refs/heads/main' && matrix.os == 'ubuntu-latest'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: veribiota-artifacts
           path: artifacts.tgz
