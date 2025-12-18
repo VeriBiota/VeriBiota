@@ -12,7 +12,7 @@ jobs:
 
       - name: Fetch VeriBiota
         run: |
-          git clone https://github.com/VeriBiota/VeriBiota ../veribiota
+          git clone https://github.com/OmnisGenomics/VeriBiota ../veribiota
           cd ../veribiota
           lake update
           lake build
@@ -24,6 +24,7 @@ jobs:
           mkdir -p ci_signatures
           veribiota check alignment global_affine_v1 ci_inputs/global_affine_v1.json --snapshot-out ci_signatures/global_affine_v1.sig.json
           veribiota check prime prime_edit_plan_v1 ci_inputs/prime_edit_plan_v1.json --snapshot-out ci_signatures/prime_edit_plan_v1.sig.json
+          veribiota check vcf vcf_normalization_v1 ci_inputs/vcf_normalization_v1.json --snapshot-out ci_signatures/vcf_normalization_v1.sig.json
 
       - name: Validate snapshot signatures
         run: |

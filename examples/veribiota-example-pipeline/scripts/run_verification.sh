@@ -12,5 +12,9 @@ veribiota check alignment global_affine_v1 "$ROOT/ci_inputs/global_affine_v1.jso
 veribiota check prime prime_edit_plan_v1 "$ROOT/ci_inputs/prime_edit_plan_v1.json" \
   --snapshot-out "$SIG_DIR/prime_edit_plan_v1.sig.json"
 
+# Tier 1 example: VCF normalization invariants
+veribiota check vcf vcf_normalization_v1 "$ROOT/ci_inputs/vcf_normalization_v1.json" \
+  --snapshot-out "$SIG_DIR/vcf_normalization_v1.sig.json"
+
 echo "Signatures written to $SIG_DIR:"
 ls -1 "$SIG_DIR" || true

@@ -1,0 +1,21 @@
+{
+  "input": {
+    "input_vcf_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "expected": {
+    "theorems": ["VB_VCF_001", "VB_VCF_002"],
+    "status": "error",
+    "signature": null,
+    "profile_version": "1.0.0",
+    "profile": "vcf_normalization_v1",
+    "instance": {
+      "error": "missing or invalid field 'normalized_vcf_hash'"
+    },
+    "engine": {
+      "veribiota_version": "0.1.0",
+      "lean_version": "4.9.0",
+      "build_id": "dev"
+    }
+  },
+  "exit": 1
+}

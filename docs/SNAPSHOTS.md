@@ -2,6 +2,10 @@
 
 Snapshot signatures let you bind a Tier 0 verification to its inputs, schema, theorems, and build metadata. Every `veribiota check …` command can emit a `snapshot_signature_v1` JSON document via `--snapshot-out <path>`.
 
+Important: despite the name, `snapshot_signature_v1` is a **provenance record**, not a cryptographic signature. For cryptographic authenticity, use Ed25519/JWS signing on checks/certificates (see `docs/canonicalization.md` and the `veribiota verify … --jwks …` commands).
+
+Snapshot signatures are a **provenance primitive**: they record the theorem IDs referenced by the profile manifest. They do not (by themselves) distinguish non-placeholder theorem content from reserved anchors.
+
 ## Quick flow
 
 ```bash

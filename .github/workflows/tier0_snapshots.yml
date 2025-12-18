@@ -32,10 +32,18 @@ jobs:
         run: |
           export PATH="$HOME/.elan/bin:$PATH"
           mkdir -p ci_signatures
-          ./veribiota check alignment global_affine_v1 Tests/profiles/global_affine_v1/match_pass.json --snapshot-out ci_signatures/global_affine_v1.sig.json --compact
-          ./veribiota check edit edit_script_normal_form_v1 Tests/profiles/edit_script_normal_form_v1/pass_simple_normal.json --snapshot-out ci_signatures/edit_script_normal_form_v1.sig.json --compact
-          ./veribiota check prime prime_edit_plan_v1 Tests/profiles/prime_edit_plan_v1/pass_simple.json --snapshot-out ci_signatures/prime_edit_plan_v1.sig.json --compact
-          ./veribiota check hmm pair_hmm_bridge_v1 Tests/profiles/pair_hmm_bridge_v1/pass_simple.json --snapshot-out ci_signatures/pair_hmm_bridge_v1.sig.json --compact
+          jq .input Tests/profiles/global_affine_v1/match_pass.json \
+            | ./veribiota check alignment global_affine_v1 - --snapshot-out ci_signatures/global_affine_v1.sig.json --compact
+          jq .input Tests/profiles/edit_script_normal_form_v1/pass_simple_normal.json \
+            | ./veribiota check edit edit_script_normal_form_v1 - --snapshot-out ci_signatures/edit_script_normal_form_v1.sig.json --compact
+          jq .input Tests/profiles/prime_edit_plan_v1/pass_simple.json \
+            | ./veribiota check prime prime_edit_plan_v1 - --snapshot-out ci_signatures/prime_edit_plan_v1.sig.json --compact
+          jq .input Tests/profiles/pair_hmm_bridge_v1/pass_simple.json \
+            | ./veribiota check hmm pair_hmm_bridge_v1 - --snapshot-out ci_signatures/pair_hmm_bridge_v1.sig.json --compact
+          jq .input Tests/profiles/vcf_normalization_v1/ok_minimal.json \
+            | ./veribiota check vcf vcf_normalization_v1 - --snapshot-out ci_signatures/vcf_normalization_minimal.sig.json --compact
+          jq .input Tests/profiles/vcf_normalization_v1/ok_complex.json \
+            | ./veribiota check vcf vcf_normalization_v1 - --snapshot-out ci_signatures/vcf_normalization_complex.sig.json --compact
 
       - name: Validate snapshot signatures
         run: |

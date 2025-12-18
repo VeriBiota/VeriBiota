@@ -1,5 +1,7 @@
 import Biosim.VeriBiota.Alignment.GlobalAffineV1
 import Biosim.VeriBiota.Edit.EditScriptV1
+import Biosim.VeriBiota.Edit.EditScriptNormalFormV1
+import Biosim.VeriBiota.Provenance.SnapshotSignatureV1
 
 namespace Biosim
 namespace VeriBiota
@@ -35,8 +37,19 @@ theorem VB_EDIT_001 (inst : Edit.EditScriptV1.Instance) :
   simpa [Edit.EditScriptV1.SpecHolds] using h
 
 /-- VB_EDIT_002:
-    Placeholder anchor for edit script normalization correctness and idempotence. -/
-theorem VB_EDIT_002 : True := trivial
+    Normalization preserves edit semantics, and is idempotent. -/
+theorem VB_EDIT_002 :
+    (∀ (s : String) (edits : List Edit.EditScriptV1.Edit),
+        Edit.EditScriptV1.applyEdits s (Edit.EditScriptNormalFormV1.normalizeScript edits) =
+          Edit.EditScriptV1.applyEdits s edits) ∧
+      (∀ edits : List Edit.EditScriptV1.Edit,
+        Edit.EditScriptNormalFormV1.normalizeScript (Edit.EditScriptNormalFormV1.normalizeScript edits) =
+          Edit.EditScriptNormalFormV1.normalizeScript edits) := by
+  constructor
+  · intro s edits
+    simpa using (Edit.EditScriptNormalFormV1.applyEdits_normalizeScript (s := s) (edits := edits))
+  · intro edits
+    simpa using (Edit.EditScriptNormalFormV1.normalizeScript_idempotent (edits := edits))
 
 /-- VB_PE_001:
     Placeholder anchor for prime edit plan net-edit linkage and structural sanity. -/
@@ -71,8 +84,25 @@ theorem VB_VCF_002 : True := trivial
 theorem VB_OFF_001 : True := trivial
 
 /-- VB_SIG_001:
-    Placeholder anchor for snapshot hash/signature integrity on canonical JSON. -/
-theorem VB_SIG_001 : True := trivial
+    Snapshot signatures bind a verification result to the input hash and the
+    manifest-registered schema/theorem metadata. -/
+theorem VB_SIG_001 :
+    ∀ (profileId profileVersion status : String) (instanceSummary : Lean.Json)
+      (digestHex : String)
+      (manifest : Provenance.SnapshotSignatureV1.ManifestEntry)
+      (ver buildId timestampUtc : String),
+      let sig :=
+        Provenance.SnapshotSignatureV1.SnapshotSignature.mkFromDigest
+          profileId profileVersion status instanceSummary digestHex
+            manifest ver buildId timestampUtc
+      sig.snapshotHash = s!"sha256:{digestHex}" ∧
+        sig.schemaHash = manifest.schemaHash ∧
+        sig.schemaId = manifest.schemaPath ∧
+        sig.theoremIds = manifest.theorems := by
+  intro profileId profileVersion status instanceSummary digestHex manifest ver buildId timestampUtc
+  simpa using
+    (Provenance.SnapshotSignatureV1.SnapshotSignature.mkFromDigest_binds_manifest
+      profileId profileVersion status instanceSummary digestHex manifest ver buildId timestampUtc)
 
 end VeriBiota
 end Biosim

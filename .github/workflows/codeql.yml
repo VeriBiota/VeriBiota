@@ -3,6 +3,7 @@ name: CodeQL
 on:
   push:
     branches: [ "main", "master" ]
+    tags-ignore: [ "v*" ]
   pull_request:
     branches: [ "main", "master" ]
 
@@ -23,12 +24,48 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
 
+      # For C/C++, default autobuild tends to pick the repo root Makefile (which
+      # triggers `lake`/Lean builds here) and can turn CodeQL into a >1h job.
+      # We only need C++ coverage for the tiny adapter demo, so build that
+      # explicitly instead.
+      - name: Build biosim-checks (Rust FFI library)
+        if: matrix.language == 'c-cpp'
+        run: |
+          set -euo pipefail
+          cargo build --manifest-path engine/biosim-checks/Cargo.toml --release
+
+      - name: Build C++ adapter (CMake)
+        if: matrix.language == 'c-cpp'
+        run: |
+          set -euo pipefail
+          VERIBIOTA_CHECKS_LIB=""
+          for cand in \
+            "$PWD/engine/biosim-checks/target/release/deps/libbiosim_checks.so" \
+            "$PWD/engine/biosim-checks/target/release/deps/libbiosim_checks.dylib" \
+            "$PWD/engine/biosim-checks/target/release/deps/libbiosim_checks.a" \
+            "$PWD/engine/biosim-checks/target/release/deps/biosim_checks.lib"; do
+            if [[ -f "$cand" ]]; then
+              VERIBIOTA_CHECKS_LIB="$cand"
+              break
+            fi
+          done
+          if [[ -z "$VERIBIOTA_CHECKS_LIB" ]]; then
+            echo "libbiosim_checks not found after cargo build. Contents:"
+            ls -la engine/biosim-checks/target/release/deps || true
+            exit 1
+          fi
+
+          cmake -S adapters/cpp -B adapters/cpp/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVERIBIOTA_CHECKS_LIB="$VERIBIOTA_CHECKS_LIB"
+          cmake --build adapters/cpp/build --config Release -j"$(nproc)"
+
       - name: Autobuild
-        uses: github/codeql-action/autobuild@v3
+        uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4

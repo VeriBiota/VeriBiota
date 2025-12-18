@@ -1,8 +1,8 @@
 site_name: VeriBiota
-site_description: Mathematically Proven Biology — proof‑backed biological simulation with formal verification and cryptographic signing.
-site_url: https://veribiota.github.io/VeriBiota/
-repo_url: https://github.com/VeriBiota/VeriBiota
-repo_name: VeriBiota/VeriBiota
+site_description: Verification bundles for bioinformatics — deterministic schemas, provenance, and proof-anchored checks where available.
+site_url: https://omnisgenomics.github.io/VeriBiota/
+repo_url: https://github.com/OmnisGenomics/VeriBiota
+repo_name: OmnisGenomics/VeriBiota
 
 theme:
   name: material
@@ -46,8 +46,17 @@ extra_css:
 
 nav:
   - Home: index.md
+  - Releases:
+      - v0.2.1 Announcement: releases/v0.2.1.md
+  - Quickstart: QUICKSTART.md
   - Why VeriBiota: why.md
   - Getting Started: getting-started.md
+  - Profiles & Attestation:
+      - Profile Spec: PROFILE_SPEC.md
+      - Snapshots: SNAPSHOTS.md
+      - Tier 0 Compliance: TIER0_COMPLIANCE.md
+      - Attested Profiles: ATTESTED_PROFILES.md
+      - VCF Normalization: VCF_NORMALIZATION.md
   - Concepts:
       - Architecture: architecture.md
       - Verification Workflow: verification-workflow.md
@@ -56,7 +65,18 @@ nav:
       - Invariants: invariants.md
       - Runtime Checks: runtime_checks.md
       - Simulator Integration: simulator-integration.md
+      - EditDAG Schema: schema/edit_dag.md
+  - Integrations:
+      - CI Adoption Kit: CI_ADOPTION_KIT.md
+      - Integration Guide: INTEGRATION.md
+      - Helix/OGN: HELIX_VERIFICATION.md
+  - Examples: examples.md
+  - Specs:
+      - VERIBIOTA-0001 Runtime Checks: spec/VERIBIOTA-0001-runtime-checks.md
+      - VERIBIOTA-0002 VeriBundle & Claims: spec/VERIBIOTA-0002-veribundle-spec.md
   - CLI: cli.md
+  - Failure Modes & Exit Codes: FAILURE_MODES.md
   - QA & Compliance:
       - QA Checklist: qa_checklist.md
+      - Code Scanning (CodeQL): code_scanning.md
   - Roadmap: roadmap.md

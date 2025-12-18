@@ -45,8 +45,7 @@ Exit codes differentiate canonical mismatch, signature failure, and enforcement 
 ## 5) Verify simulation results
 Runtime engines evaluate invariant drift and positivity against the signed checks JSON:
 ```bash
-./veribiota verify results build/artifacts/checks/sir-demo.json results.jsonl \
-  --jwks security/jwks.json --print-details
+./veribiota verify results build/artifacts/checks/sir-demo.json results.jsonl
 ```
 
 ## 6) EditDAG verification tiers
@@ -80,7 +79,7 @@ provides a small, shared JSON schema plus a Python adapter and Lean entrypoint.
   - Any project can add:
     ```yaml
     - name: Run VeriBiota DAG checks
-      uses: omniscoder/VeriBiota/.github/actions/veribiota-check@v1
+      uses: OmnisGenomics/VeriBiota/.github/actions/veribiota-check@v1
       with:
         project-name: MySim
         dag-glob: veribiota_work/*.dag.json

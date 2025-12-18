@@ -1,0 +1,16 @@
+.git
+.github
+.lake
+.venv
+Tests/tmp
+artifacts
+build
+dist
+node_modules
+site
+target
+engine/biosim-checks/target
+python/veribiota.egg-info
+**/*.tmp
+**/*.log
+**/.DS_Store

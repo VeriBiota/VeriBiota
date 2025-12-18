@@ -2,17 +2,19 @@
 
 This catalog defines what VeriBiota profiles judge across the stack. Profiles are grouped by implementation tier.
 
-| Profile                      | Status       | Domain        | Consumers          |
-|------------------------------|--------------|---------------|--------------------|
-| global_affine_v1             | Implemented  | alignment     | OGN, Helix         |
-| edit_script_v1               | Implemented  | edit          | Helix, OGN         |
-| edit_script_normal_form_v1   | Planned      | edit          | Helix              |
-| prime_edit_plan_v1           | Planned      | CRISPR/Prime  | Helix              |
-| pair_hmm_bridge_v1           | Planned      | HMM/variant   | OGN                |
-| read_set_conservation_v1     | Planned      | pipeline      | OGN                |
-| vcf_normalization_v1         | Future       | variant       | OGN, external      |
-| offtarget_score_sanity_v1    | Future       | CRISPR        | Helix              |
-| snapshot_signature_v1        | Future       | provenance    | Helix, VeriBiota   |
+| Profile                      | Status                                   | Domain        | Consumers          |
+|------------------------------|------------------------------------------|---------------|--------------------|
+| global_affine_v1             | Implemented (proof-backed anchors)       | alignment     | OGN, Helix         |
+| edit_script_v1               | Implemented (proof-backed anchors)       | edit          | Helix, OGN         |
+| edit_script_normal_form_v1   | Implemented (proof-backed anchors)       | edit          | Helix              |
+| prime_edit_plan_v1           | Implemented (contract-checked; anchors reserved) | CRISPR/Prime  | Helix              |
+| pair_hmm_bridge_v1           | Implemented (contract-checked; anchors reserved) | HMM/variant   | OGN                |
+| read_set_conservation_v1     | Schema/manifest only (no `check` route yet)      | pipeline      | OGN                |
+| vcf_normalization_v1         | Tier 1 (contract-checked; anchors reserved)      | variant       | OGN, external      |
+| offtarget_score_sanity_v1    | Schema/manifest only (no `check` route yet)      | CRISPR        | Helix              |
+| snapshot_signature_v1        | Emitted provenance record (proof-backed anchor)  | provenance    | Helix, VeriBiota   |
+
+Proof status note: “proof-backed anchors” means the referenced theorem IDs are non-placeholder Lean theorems in `Biosim/VeriBiota/Theorems.lean`. “anchors reserved” means the profile is implemented and tested, but one or more referenced theorem IDs are still placeholders today.
 
 ## Conventions
 
@@ -63,11 +65,9 @@ This catalog defines what VeriBiota profiles judge across the stack. Profiles ar
   - Final result equality: applying edits left-to-right yields exactly `seqB`.
   - Basic coherence: no degenerate no-op edits (unless later normalized); no overlapping ambiguous edits.
 - **Instance summary**: `seqA_length`, `seqB_length`, `edit_count`, and `applied_ok` boolean.
-- **Theorem anchors**: `VB_EDIT_001` – edit script application is total and well-defined; future `VB_EDIT_002` – normalization theorem.
+- **Theorem anchors**: `VB_EDIT_001` – edit script application is total and well-defined.
 
-## Tier 1 – Next Profiles To Implement
-
-### 3. edit_script_normal_form_v1 (Status: Planned, high priority)
+### 3. edit_script_normal_form_v1 (Status: Implemented, proof-anchored)
 
 - **Purpose**: Provide a canonical normalized form so different tools agree on “the same edit”.
 - **Intended consumers**: Helix planner; any diff/patch layer in OGN; future audit/tracking.
@@ -76,9 +76,11 @@ This catalog defines what VeriBiota profiles judge across the stack. Profiles ar
   - Normalization correctness: `applyEdits(seqA, edits) = applyEdits(seqA, normalized_edits) = seqB`.
   - Normal form invariants: no adjacent merges possible; minimal representation under chosen ordering (e.g., leftmost, shortest); no redundant `sub` that is a match.
   - Idempotence: re-normalizing `normalized_edits` yields the same script.
-- **Theorem anchors (planned)**: `VB_EDIT_002` – normalization preserves semantics and is idempotent.
+- **Theorem anchors**: `VB_EDIT_001` – base script correctness; `VB_EDIT_002` – normalization preserves semantics and is idempotent.
 
-### 4. prime_edit_plan_v1 (Status: Planned, high priority for Helix)
+## Implemented profiles with reserved theorem anchors
+
+### 4. prime_edit_plan_v1 (Status: Implemented, anchors reserved)
 
 - **Purpose**: Verify that a Prime Editing plan (guide, RT template, nicking strategy) corresponds to a desired net edit script.
 - **Intended consumers**: Helix prime editor module (simulated); future recommendations, constraints, AI models.
@@ -90,9 +92,9 @@ This catalog defines what VeriBiota profiles judge across the stack. Profiles ar
   - Plan-to-edit linkage: `net_edit_script` encodes exactly the delta between `ref_seq` and `target_seq`; sites of change align with RT template design.
   - Internal consistency: PBS and RT lengths within allowed bounds; PAM positions consistent with spacer location.
   - Relationship to `edit_script_v1`: calls `edit_script_v1` on (`ref_seq`, `target_seq`, `net_edit_script`).
-- **Theorem anchors (planned)**: `VB_PE_001` – prime plan’s net edit script equals delta between reference and target; `VB_EDIT_001` reused for base script correctness.
+- **Theorem anchors**: `VB_PE_001` – reserved anchor for prime plan net-edit linkage; `VB_EDIT_001` reused for base script correctness.
 
-### 5. pair_hmm_bridge_v1 (Status: Planned, high priority for OGN)
+### 5. pair_hmm_bridge_v1 (Status: Implemented, anchors reserved)
 
 - **Purpose**: Tie DP-based alignment scoring to Pair-HMM likelihood scoring under a specified parameter mapping (small instances).
 - **Intended consumers**: OGN variant calling stack; any HMM-based likelihood computation referencing DP.
@@ -101,9 +103,9 @@ This catalog defines what VeriBiota profiles judge across the stack. Profiles ar
   - Parameter mapping correctness: DP gap open/extend and mismatch penalties correspond to log transition/emission probabilities via the mapping.
   - Score equivalence within tolerance: for finite sequences, `dp_score` equals (or within rounding epsilon of) `hmm_score` under the mapping.
   - Structural equivalence (optional): Viterbi path encoded by HMM corresponds to a valid DP alignment path.
-- **Theorem anchors (planned)**: `VB_HMM_001` – mapping lemma (DP parameters ↔ HMM parameters); `VB_HMM_002` – small-instance equivalence theorem.
+- **Theorem anchors**: `VB_HMM_001` – reserved anchor for mapping lemma (DP parameters ↔ HMM parameters); `VB_HMM_002` – reserved anchor for small-instance equivalence theorem.
 
-### 6. read_set_conservation_v1 (Status: Planned, high priority pipeline invariant)
+### 6. read_set_conservation_v1 (Status: Schema/manifest only, planned)
 
 - **Purpose**: Verify that a pipeline stage conserves the multiset of reads and sample labels modulo defined operations (e.g., marking duplicates, sorting).
 - **Intended consumers**: OGN end-to-end pipeline; any ETL/transform stage in the stack.
@@ -113,17 +115,18 @@ This catalog defines what VeriBiota profiles judge across the stack. Profiles ar
   - Checksum or sketch consistency: aggregate hashes or sketches consistent with allowed operations; if dropping low-quality reads, the allowed pattern is codified.
 - **Theorem anchors (planned)**: `VB_PIPE_001` – multiset preservation under pure reordering; `VB_PIPE_002` – constrained drop rules.
 
-## Tier 2 – Future Profiles (Defined for alignment now)
+### 7. vcf_normalization_v1 (Status: Tier 1 – contract-checked, anchors reserved)
 
-### 7. vcf_normalization_v1
-
-- **Purpose**: Guarantee that VCF entries are in a canonical normalized form (left-aligned, minimal, no redundant alleles).
-- **Inputs**: `ref_seq_window`; `vcf_record` fields (`CHROM`, `POS`, `REF`, `ALT[]`).
+- **Purpose**: Guarantee that VCF entries are normalized (left-aligned, minimal representation) without changing variant meaning.
+- **Inputs**: hashes/IDs of pre- and post-normalization VCFs; optional reference FASTA hash; per-variant records describing original vs normalized locus/ref/alt and operations applied.
 - **Verified properties**:
-  - Ref correctness: `REF` matches the reference genome at the given position.
-  - Left-alignment and minimality: indels are left-aligned; no redundant prefix/suffix that could be trimmed.
-  - ALT semantics: each `ALT` allele is a valid alternate sequence under minimal change.
-- **Theorem anchors (planned)**: `VB_VCF_001` – normalization is semantics-preserving; `VB_VCF_002` – uniqueness of normalized representation in the local window.
+  - Variant preservation: canonicalized original equals canonicalized normalized (no gain/loss of variants).
+  - Left-alignment/minimality: normalized record matches canonical form (no shared prefix/suffix remains).
+  - Ref/alt consistency: ref/alt remain valid after trimming and stay aligned to the reference context.
+  - Idempotence: re-normalizing an already normalized variant yields the same variant.
+- **Theorem anchors (Tier 1, reserved today)**: `VB_VCF_001` – normalization preserves semantics; `VB_VCF_002` – normalization is idempotent/unique in window.
+
+## Tier 2 – Future Profiles (Defined for alignment now)
 
 ### 8. offtarget_score_sanity_v1
 
@@ -135,15 +138,15 @@ This catalog defines what VeriBiota profiles judge across the stack. Profiles ar
   - Basic consistency: no NaNs, infinities, or out-of-range values.
 - **Theorem anchors (planned)**: `VB_OFF_001` – monotonicity lemma over discrete mismatch counts.
 
-### 9. snapshot_signature_v1 (Helix/VeriBiota artifact integrity)
+### 9. snapshot_signature_v1 (Provenance binding)
 
-- **Purpose**: Verify that a Helix/VeriBiota snapshot artifact (EVS, edit plan, etc.) is structurally sound and correctly signed/hash-linked.
-- **Inputs**: `snapshot_json` artifact; `signature_block` (hash, optional signature, theorem IDs, version).
+- **Purpose**: Emit a provenance record binding a verification run to its input hash, schema hash/id, theorem IDs, and build metadata.
+- **Important**: despite the name, `snapshot_signature_v1` is **not** a cryptographic signature. Cryptographic signing is handled separately (Ed25519/JWS on checks/certificates).
+- **Inputs**: `snapshot_profile`, `snapshot_hash`, `schema_hash`, `schema_id`, `theorem_ids`, build/version/timestamp, plus optional `instance_summary` and provenance metadata.
 - **Verified properties**:
-  - Schema correctness: snapshot conforms to its EVS or plan schema.
-  - Hash integrity: embedded hash corresponds to the JSON content in a canonical representation.
-  - Proof linkage: snapshot declares the VeriBiota theorems or profiles it depends on, matching manifest versions.
-- **Theorem anchors (planned)**: `VB_SIG_001` – hash correctness and reproducibility on canonical form.
+  - Binding: the emitted document’s `schema_hash`, `schema_id`, and `theorem_ids` mirror the manifest entry used for the run.
+  - Hash recording: the emitted `snapshot_hash` records the tool-computed `sha256:<hex>` digest over the exact input bytes supplied for verification.
+- **Theorem anchors**: `VB_SIG_001` – snapshot signature binds hash + manifest metadata (implemented).
 
 ## How to Use This Spec
 

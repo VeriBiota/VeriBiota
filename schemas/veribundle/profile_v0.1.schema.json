@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veribiota.dev/schemas/veribundle/profile/v0.1",
+  "title": "VeriBiota Profile v0.1",
+  "type": "object",
+  "required": ["profile_id", "description", "required_claims", "policy"],
+  "properties": {
+    "profile_id": {
+      "type": "string",
+      "pattern": "^vb\\.profile\\.[^@]+@\\d+\\.\\d+\\.\\d+$"
+    },
+    "description": { "type": "string" },
+    "required_claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/claim" }
+    },
+    "optional_claims": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/claim" }
+    },
+    "policy": { "$ref": "#/definitions/policy" }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "claim": {
+      "type": "object",
+      "required": ["id", "severity"],
+      "properties": {
+        "id": { "type": "string" },
+        "severity": { "type": "string", "enum": ["blocker", "warning", "info"] },
+        "params": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": false
+    },
+    "policy": {
+      "type": "object",
+      "required": ["blocker_fail", "warning_fail", "inconclusive"],
+      "properties": {
+        "blocker_fail": { "type": "string", "enum": ["overall_fail", "overall_inconclusive"] },
+        "warning_fail": {
+          "type": "string",
+          "enum": ["overall_fail", "overall_pass_with_warnings", "overall_inconclusive"]
+        },
+        "inconclusive": { "type": "string", "enum": ["overall_inconclusive", "overall_fail"] }
+      },
+      "additionalProperties": false
+    }
+  }
+}

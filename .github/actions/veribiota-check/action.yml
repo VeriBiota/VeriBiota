@@ -11,7 +11,7 @@ inputs:
     description: "Glob (relative to the workflow workspace) for normalized EditDAG JSON files."
     required: true
   veribiota-ref:
-    description: "Git ref (branch, tag, or commit) of omniscoder/VeriBiota to use."
+    description: "Git ref (branch, tag, or commit) of OmnisGenomics/VeriBiota to use."
     required: false
     default: "main"
 
@@ -39,7 +39,7 @@ runs:
         if [ -z "$REF" ]; then
           REF="main"
         fi
-        git clone --depth 1 --branch "$REF" https://github.com/omniscoder/VeriBiota.git veribiota-src
+        git clone --depth 1 --branch "$REF" https://github.com/OmnisGenomics/VeriBiota.git veribiota-src
 
     - name: Prepare Lean cache
       shell: bash

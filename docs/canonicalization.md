@@ -50,9 +50,11 @@ Consumers (CLI, engine, orchestration) must:
 3. Recompute the SHA256 tag and compare with `payloadHash`.
 4. Verify the JWS using the `kid`-selected Ed25519 public key from the JWKS document.
 
-Any deviation (bad hash, missing newline, header mismatch) produces exit code `4`
-(`canonical mismatch`). Signature failures use exit code `2`, while missing signatures in enforced
-mode use exit code `5`.
+Any deviation in canonicalization/JWS structure (missing newline, header mismatch, payload bytes
+not matching the canonical rendering) produces exit code `4` (`canonical mismatch`). Signature
+failures use exit code `2`, payload hash mismatches use exit code `3`, and missing signatures in
+enforced mode use exit code `5`. For the full table (including parse/decode errors), see
+[`docs/FAILURE_MODES.md`](FAILURE_MODES.md).
 
 ## Signing enforcement
 

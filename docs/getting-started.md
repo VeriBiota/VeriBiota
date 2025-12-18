@@ -77,7 +77,7 @@ export VERIBIOTA_OPENSSL="$(brew --prefix openssl@3)/bin/openssl"
   reusable GitHub Action:
   ```yaml
   - name: Run VeriBiota DAG checks
-    uses: omniscoder/VeriBiota/.github/actions/veribiota-check@v1
+    uses: OmnisGenomics/VeriBiota/.github/actions/veribiota-check@v1
     with:
       project-name: MySim
       dag-glob: veribiota_work/*.dag.json

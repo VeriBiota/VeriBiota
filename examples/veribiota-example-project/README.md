@@ -55,7 +55,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run VeriBiota DAG checks
-        uses: omniscoder/VeriBiota/.github/actions/veribiota-check@v0.1.0
+        uses: OmnisGenomics/VeriBiota/.github/actions/veribiota-check@v0.1.0
         with:
           project-name: Example
           dag-glob: tests/dags/*.dag.json
@@ -73,4 +73,3 @@ Projects adopting VeriBiota should:
    veribiota check-json --input 'tests/dags/*.dag.json'
    veribiota generate-suite --input 'tests/dags/*.dag.json' --project Example --suite DAGs
    ```
-

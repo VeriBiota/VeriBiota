@@ -18,7 +18,7 @@ Thanks for your interest in contributing! This guide helps you build, test, and 
 
 ## Docs
 - Local preview: `pip install mkdocs mkdocs-material && mkdocs serve`
-- Docs live at https://veribiota.github.io/VeriBiota/
+- Docs live at https://omnisgenomics.github.io/VeriBiota/
 
 ## Pull Requests
 - Keep changes focused; include rationale in the PR description.

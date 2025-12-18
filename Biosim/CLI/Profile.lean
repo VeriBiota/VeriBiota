@@ -5,10 +5,15 @@ import Biosim.VeriBiota.Edit.EditScriptNormalFormV1
 import Biosim.VeriBiota.Edit.EditScriptV1
 import Biosim.VeriBiota.HMM.PairHMMBridgeV1
 import Biosim.VeriBiota.Prime.PrimeEditPlanV1
+import Biosim.VeriBiota.Provenance.SnapshotSignatureV1
+import Biosim.VeriBiota.VCF.Normalization
 
 open Lean
+open Biosim.VeriBiota
 open Biosim.VeriBiota.Alignment
 open Biosim.VeriBiota.Edit
+open Biosim.VeriBiota.HMM
+open Biosim.VeriBiota.Prime
 open System
 
 namespace Biosim
@@ -23,6 +28,7 @@ def profileUsage : String :=
     , "  veribiota check edit edit_script_normal_form_v1 <input.json> [--snapshot-out PATH] [--compact]"
     , "  veribiota check prime prime_edit_plan_v1 <input.json> [--snapshot-out PATH] [--compact]"
     , "  veribiota check hmm pair_hmm_bridge_v1 <input.json> [--snapshot-out PATH] [--compact]"
+    , "  veribiota check vcf vcf_normalization_v1 <input.json> [--snapshot-out PATH] [--compact]"
     ]
 
 private def jsonInt (i : Int) : Json :=
@@ -78,13 +84,38 @@ private def requireField {α} : Except String α → String → Except String α
   | Except.ok v, _ => Except.ok v
   | Except.error _, label => Except.error s!"missing or invalid field '{label}'"
 
-structure ManifestEntry where
-  schemaPath : String
-  schemaHash : String
-  theorems : List String
+abbrev ManifestEntry := VeriBiota.Provenance.SnapshotSignatureV1.ManifestEntry
+
+private def resolveManifestPath : IO FilePath := do
+  let cwd ← IO.currentDir
+  let mut candidates : List FilePath := []
+  match ← IO.getEnv "VERIBIOTA_DATA_DIR" with
+  | some root =>
+      let rootPath := FilePath.mk root
+      let envPath :=
+        match rootPath.fileName with
+        | some "manifest.json" => rootPath
+        | _ => rootPath / "profiles/manifest.json"
+      candidates := candidates.concat envPath
+  | none => pure ()
+  candidates := candidates.concat (cwd / "profiles/manifest.json")
+  let exePath ← IO.appPath
+  let exeDir :=
+    match exePath.parent with
+    | some dir => dir
+    | none => cwd
+  candidates := candidates.concat (exeDir / "profiles/manifest.json")
+
+  for cand in candidates do
+    if ← cand.pathExists then
+      return cand
+
+  let tried :=
+    String.intercalate "\n" <| candidates.map fun p => s!"- {p.toString}"
+  throw <| IO.userError s!"Manifest not found. Tried:\n{tried}\nHint: set VERIBIOTA_DATA_DIR to the extracted release bundle directory."
 
 private def loadManifestEntry (profileId : String) : IO ManifestEntry := do
-  let manifestPath := FilePath.mk "profiles/manifest.json"
+  let manifestPath ← resolveManifestPath
   let contents ← IO.FS.readFile manifestPath
   let manifest ←
     match Json.parse contents with
@@ -109,7 +140,7 @@ private def loadManifestEntry (profileId : String) : IO ManifestEntry := do
   let theorems ←
     match entry.getObjVal? "theorems" with
     | Except.ok (Json.arr arr) =>
-        let names := arr.toList.mapMaybe fun j =>
+        let names := arr.toList.filterMap fun j =>
           match j with
           | Json.str s => some s
           | _ => none
@@ -129,22 +160,11 @@ private def emitSnapshotSignature (outPath : FilePath) (profileId profileVersion
   let manifest ← loadManifestEntry profileId
   let timestamp ← Biosim.IO.currentIsoTimestamp
   let digestHex ← Biosim.IO.sha256HexBytesNear inputHint rawInput
-  let payload :=
-    Json.mkObj
-      [ ("snapshot_profile", Json.str profileId)
-      , ("snapshot_profile_version", Json.str profileVersion)
-      , ("snapshot_hash", Json.str s!"sha256:{digestHex}")
-      , ("schema_hash", Json.str manifest.schemaHash)
-      , ("schema_id", Json.str manifest.schemaPath)
-      , ("theorem_ids", Json.arr <| manifest.theorems.map Json.str |>.toArray)
-      , ("veribiota_build_id", Json.str buildId)
-      , ("veribiota_version", Json.str ver)
-      , ("lean_version", Json.str Lean.versionString)
-      , ("timestamp_utc", Json.str timestamp)
-      , ("verification_result", Json.str status)
-      , ("instance_summary", instanceSummary)
-      ]
-  let bytes := (payload.pretty 2).toUTF8
+  let sig :=
+    VeriBiota.Provenance.SnapshotSignatureV1.SnapshotSignature.mkFromDigest
+      profileId profileVersion status instanceSummary
+      digestHex manifest ver buildId timestamp
+  let bytes := (sig.toJson.pretty 2).toUTF8
   Biosim.IO.writeFileAtomic outPath bytes
 
 def decodeAlignmentInstance (j : Json) : Except String GlobalAffineV1.Instance := do
@@ -312,8 +332,8 @@ def decodeEditScriptNormalFormInstance (j : Json) :
     match j.getObjVal? "normalized_edits" with
     | Except.ok normJson =>
         match decodeEditsArray normJson "normalized_edits" with
-    | Except.ok v => pure (some v)
-    | Except.error err => Except.error err
+        | Except.ok v => pure (some v)
+        | Except.error err => Except.error err
     | Except.error _ => pure none
   pure { seqA, seqB, edits, normalizedEdits? }
 
@@ -363,7 +383,7 @@ def decodeHMMParams (j : Json) : Except String PairHMMBridgeV1.HMMParams := do
       , delToMatch := ← fieldFloat transJson "del_to_match" "transition.del_to_match"
       , delToDel := ← fieldFloat transJson "del_to_del" "transition.del_to_del" }
   let emission : PairHMMBridgeV1.Emission :=
-    { match := ← fieldFloat emJson "match" "emission.match"
+    { matchScore := ← fieldFloat emJson "match" "emission.match"
       , mismatch := ← fieldFloat emJson "mismatch" "emission.mismatch"
       , gap := ← fieldFloat emJson "gap" "emission.gap" }
   pure { transition, emission }
@@ -379,6 +399,55 @@ def decodePairHMMBridgeInstance (j : Json) :
   let dpScore ← requireField (j.getObjValAs? Float "dp_score") "dp_score"
   let hmmScore ← requireField (j.getObjValAs? Float "hmm_score") "hmm_score"
   pure { seqA, seqB, dpScoring, hmmParams, dpScore, hmmScore }
+
+def decodeAltArray (j : Json) (label : String) : Except String String := do
+  let arr ← requireField (j.getArr?) label
+  match arr.toList with
+  | [] => Except.error s!"{label} must have at least one alt"
+  | h :: _ =>
+      match h with
+      | Json.str s => Except.ok s
+      | _ => Except.error s!"{label} alt entries must be strings"
+
+def decodeVcfVariant (locus : Json) (block : Json) (label : String) :
+    Except String VCF.Normalization.Variant := do
+  let chrom ← requireField (locus.getObjValAs? String "chrom") s!"{label}.locus.chrom"
+  let pos ← requireField (locus.getObjValAs? Nat "pos") s!"{label}.locus.pos"
+  let ref ← requireField (block.getObjValAs? String "ref") s!"{label}.ref"
+  let altJson ← requireField (block.getObjVal? "alt") s!"{label}.alt"
+  let alt ← decodeAltArray altJson s!"{label}.alt"
+  pure { chrom, pos, ref, alt }
+
+def decodeVcfNormalizationInstance (j : Json) :
+    Except String VCF.Normalization.Instance := do
+  let inputVcfHash ← requireField (j.getObjValAs? String "input_vcf_hash") "input_vcf_hash"
+  let normalizedVcfHash ← requireField (j.getObjValAs? String "normalized_vcf_hash") "normalized_vcf_hash"
+  let referenceFastaHash? :=
+    match j.getObjValAs? String "reference_fasta_hash" with
+    | Except.ok v => some v
+    | Except.error _ => none
+  let variantsJson ← requireField (j.getObjVal? "variants") "variants"
+  let variantsArr ← requireField (variantsJson.getArr?) "variants"
+  let variants ← variantsArr.foldlM (m := Except String)
+      (init := ([] : List VCF.Normalization.VariantRecord)) fun acc vj => do
+    let locusJson ← requireField (vj.getObjVal? "locus") "variants[].locus"
+    let origJson ← requireField (vj.getObjVal? "original") "variants[].original"
+    let normJson ← requireField (vj.getObjVal? "normalized") "variants[].normalized"
+    let orig ← decodeVcfVariant locusJson origJson "variants[].original"
+    let normPos ← requireField (normJson.getObjValAs? Nat "pos") "variants[].normalized.pos"
+    let norm ← decodeVcfVariant
+      (Json.mkObj [("chrom", Json.str orig.chrom), ("pos", jsonNat normPos)])
+      normJson "variants[].normalized"
+    let ops :=
+      match vj.getObjVal? "operations" with
+      | Except.ok (Json.arr ops) =>
+          ops.toList.foldl (fun acc op =>
+            match op with
+            | Json.str s => acc ++ [s]
+            | _ => acc) []
+      | _ => []
+    pure (acc.concat { original := orig, normalized := norm, operations := ops })
+  pure { inputVcfHash, normalizedVcfHash, referenceFastaHash?, variants }
 
 private def renderEditScriptPayload (inst : EditScriptV1.Instance) (status : String)
     (holds : Bool) (ver : String) (buildId : String)
@@ -492,6 +561,36 @@ private def renderPairHMMBridgePayload (inst : PairHMMBridgeV1.Instance) (status
     , ("profile_version", Json.str PairHMMBridgeV1.profileVersion)
     , ("status", Json.str status)
     , ("theorems", Json.arr <| PairHMMBridgeV1.coreTheorems.map Json.str |>.toArray)
+    , ("instance", instanceObj)
+    , ("engine", engineInfo ver buildId)
+    , ("signature", Json.null)
+    ]
+  (payload, instanceObj)
+
+private def renderVcfNormalizationPayload (inst : VCF.Normalization.Instance) (status : String)
+    (results : List Bool) (ver : String) (buildId : String)
+    (err? : Option String := none) : (Json × Json) :=
+  let total := inst.variants.length
+  let okCount := results.count true
+  let detailFields : List (String × Json) :=
+    [ ("variant_count", jsonNat total)
+    , ("normalized_ok_count", jsonNat okCount)
+    , ("all_variants_normalized", Json.bool (okCount = total))
+    , ("input_vcf_hash", Json.str inst.inputVcfHash)
+    , ("normalized_vcf_hash", Json.str inst.normalizedVcfHash)
+    ] ++
+    (match inst.referenceFastaHash? with
+     | some h => [("reference_fasta_hash", Json.str h)]
+     | none => []) ++
+    (match err? with
+     | some msg => [("error", Json.str msg)]
+     | none => [])
+  let instanceObj := Json.mkObj detailFields
+  let payload := Json.mkObj
+    [ ("profile", Json.str VCF.Normalization.profileId)
+    , ("profile_version", Json.str VCF.Normalization.profileVersion)
+    , ("status", Json.str status)
+    , ("theorems", Json.arr <| VCF.Normalization.coreTheorems.map Json.str |>.toArray)
     , ("instance", instanceObj)
     , ("engine", engineInfo ver buildId)
     , ("signature", Json.null)
@@ -815,6 +914,59 @@ def runPairHMMBridgeProfile (inputPath : FilePath) (pretty : Bool := true)
           pure 1
       else
         pure exitCode
+
+/-- Run the `vcf_normalization_v1` profile. -/
+def runVcfNormalizationProfile (inputPath : FilePath) (pretty : Bool := true)
+    (ver : String := "dev") (buildId : String := "dev")
+    (snapshotOut? : Option FilePath := none) : IO UInt32 := do
+  let jsonRaw? ← readJsonInputWithRaw inputPath
+  let (json, rawBytes) ←
+    match jsonRaw? with
+    | Except.ok pair => pure pair
+    | Except.error msg =>
+        let payload := Json.mkObj
+          [ ("profile", Json.str VCF.Normalization.profileId)
+          , ("profile_version", Json.str VCF.Normalization.profileVersion)
+          , ("status", Json.str "error")
+          , ("theorems", Json.arr <| VCF.Normalization.coreTheorems.map Json.str |>.toArray)
+          , ("instance", Json.mkObj [("error", Json.str msg)])
+          , ("engine", engineInfo ver buildId)
+          , ("signature", Json.null)
+          ]
+        IO.println (if pretty then payload.pretty else payload.compress)
+        return 1
+  let inst? := decodeVcfNormalizationInstance json
+  let inst ←
+    match inst? with
+    | Except.ok inst => pure inst
+    | Except.error msg =>
+        let payload := Json.mkObj
+          [ ("profile", Json.str VCF.Normalization.profileId)
+          , ("profile_version", Json.str VCF.Normalization.profileVersion)
+          , ("status", Json.str "error")
+          , ("theorems", Json.arr <| VCF.Normalization.coreTheorems.map Json.str |>.toArray)
+          , ("instance", Json.mkObj [("error", Json.str msg)])
+          , ("engine", engineInfo ver buildId)
+          , ("signature", Json.null)
+          ]
+        IO.println (if pretty then payload.pretty else payload.compress)
+        return 1
+  let results := inst.variants.map fun r => decide (VCF.Normalization.recordHolds r)
+  let allOk := results.all (· = true)
+  let status := if allOk then "passed" else "failed"
+  let exitCode : UInt32 := if allOk then 0 else 2
+  let (payload, instanceObj) := renderVcfNormalizationPayload inst status results ver buildId none
+  IO.println (if pretty then payload.pretty else payload.compress)
+  match snapshotOut? with
+  | none => pure exitCode
+  | some out =>
+      try
+        emitSnapshotSignature out VCF.Normalization.profileId VCF.Normalization.profileVersion
+          status instanceObj rawBytes inputPath ver buildId
+        pure exitCode
+      catch err =>
+        IO.eprintln s!"Snapshot signature failed: {err}"
+        pure 1
 
 end Profile
 end CLI
