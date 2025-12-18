@@ -1,4 +1,4 @@
-# Runtime Checks FFI (v0.1.0)
+# Runtime Checks FFI (v0.1.x)
 
 The `engine/biosim-checks` crate exposes the minimal contract the compute team needs to honour while we stay on schema v1.
 
@@ -37,17 +37,15 @@ int veribiota_checks_eval(const VeribiotaSnapshot* snap,
 void veribiota_checks_free(void);
 ```
 
-## Expectations for v0.1.0
+## Expectations for v0.1.x
 
-> **Status:** the `engine/biosim-checks` crate currently ships a **stub** implementation of `RuntimeChecks`. Signature modes are accepted as input but not enforced, and linear invariants are evaluated against a baseline of `0.0` using a demo-specific `S/I/R` indexing convention. Treat these checks as advisory until a full implementation lands.
+> **Status:** the `engine/biosim-checks` crate now enforces signed modes (`SigMode::SignedSoft` / `SigMode::SignedEnforced`) by validating JWS against JWKS, recomputing `payloadHash`, and parsing the unsigned payload from the signature. Linear invariants respect declared species ordering (or fall back to S/I/R) and support non-zero baselines.
 
-1. **Signature verification (future)** – the FFI reserves a `SigMode` and `jwks_json` parameter so engines can enforce `signed-soft` / `signed-enforced` once a production verifier is wired in. The v0.1.0 stub does **not** perform real JWS/JWKS verification yet.
-2. **Evaluate per snapshot** – SSA runs should call once per event; ODE runs can downsample (for example, every 10 integration steps) as long as `strict=true` checks halt immediately when violated.
-3. **Report drift** – runtimes should report absolute and relative drift for each invariant, populate `max_*` fields, and mark `violated` whenever tolerance is exceeded. The current stub reports drift relative to a zero baseline; future versions will support user-declared baselines.
+1. **Signature verification** – pass `sig_mode=1|2` with a JWKS JSON string; the helper rejects missing/invalid signatures or payload hashes. Use `sig_mode=0` for unsigned inputs.
+2. **Evaluate per snapshot** – SSA runs should call once per event; ODE runs can downsample as long as `strict=true` checks halt immediately when violated.
+3. **Report drift** – runtimes report absolute/relative drift for each invariant, populate `max_*`, and mark `violated` when tolerances are exceeded. Baselines default to `0.0` unless a `baseline` field is present in the check.
 4. **Result bundles** – include `modelHash` and `checksDigest` from the JSON header so `veribiota verify results <checks> <results>` passes.
-5. **Stability** – the FFI ABI is frozen until schema v0.2. Ship any engine changes via a new crate version without breaking symbols.
-
-Once the real implementation lands, drop it into the `RuntimeChecks` trait and keep the stub as an integration test.
+5. **Stability** – the FFI ABI is frozen until schema v0.2. Ship engine changes via a new crate version without breaking symbols.
 
 ## Local Results Evaluation (Rust helper)
 

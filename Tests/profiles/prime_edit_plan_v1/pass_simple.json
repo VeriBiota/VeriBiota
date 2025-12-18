@@ -1,0 +1,39 @@
+{
+  "input": {
+    "ref_seq": "ACGT",
+    "target_seq": "AGGT",
+    "pegRNA": {
+      "spacer": "ACG",
+      "pam": "T",
+      "rt_template": "GGGGGGGGGG",
+      "pbs": "TTTTTTTT"
+    },
+    "net_edit_script": [
+      { "type": "sub", "pos": 1, "len": 1, "payload": "G" }
+    ]
+  },
+  "expected": {
+    "theorems": ["VB_PE_001", "VB_EDIT_001"],
+    "status": "passed",
+    "signature": null,
+    "profile_version": "1.0.0",
+    "profile": "prime_edit_plan_v1",
+    "instance": {
+      "ref_seq_length": 4,
+      "target_seq_length": 4,
+      "edit_count": 1,
+      "pegRNA_pbs_length": 8,
+      "pegRNA_rt_length": 10,
+      "net_edit_applied": true,
+      "pam_aligned": true,
+      "lengths_within_bounds": true,
+      "nick_present": false
+    },
+    "engine": {
+      "veribiota_version": "0.1.0",
+      "lean_version": "4.9.0",
+      "build_id": "dev"
+    }
+  },
+  "exit": 0
+}

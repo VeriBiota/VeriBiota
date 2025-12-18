@@ -5,6 +5,7 @@ import Biosim.IO.Certificate
 import Biosim.IO.Importer
 import Biosim.Examples.CertificateDemo
 import Biosim.CLI.Verify
+import Biosim.CLI.Profile
 
 open Lean
 open System
@@ -14,7 +15,7 @@ open Biosim.CLI
 open Biosim.IO (SignatureMode)
 open Biosim.IO.SignatureMode
 
-def toolkitVersion : String := "0.10.2-pilot"
+def toolkitVersion : String := "0.1.0"
 
 /-- CLI options for emitting artifacts. -/
 structure CliConfig where
@@ -43,6 +44,11 @@ def usage : String :=
     , "  veribiota import --in MODEL.json --emit-all [--out DIR]"
     , "  veribiota verify (checks|cert) <path> --jwks JWKS [--sig-mode MODE] [--print-details]"
     , "  veribiota verify results <checks.json> <results.jsonl>"
+    , "  veribiota check alignment global_affine_v1 <input.json> [--snapshot-out PATH] [--compact]"
+    , "  veribiota check edit edit_script_v1 <input.json> [--snapshot-out PATH] [--compact]"
+    , "  veribiota check edit edit_script_normal_form_v1 <input.json> [--snapshot-out PATH] [--compact]"
+    , "  veribiota check prime prime_edit_plan_v1 <input.json> [--snapshot-out PATH] [--compact]"
+    , "  veribiota check hmm pair_hmm_bridge_v1 <input.json> [--snapshot-out PATH] [--compact]"
     , "  veribiota --canon <artifact.json> [--out OUTPUT]"
     , "  veribiota --checks-schema"
     , "  veribiota --version"
@@ -114,6 +120,20 @@ partial def parseSimArgsAux : SimConfig → List String → Except String SimCon
 
 def parseSimArgs (args : List String) : Except String SimConfig :=
   parseSimArgsAux {} args
+
+structure CheckOptions where
+  pretty : Bool := true
+  snapshotOut? : Option FilePath := none
+
+private def parseCheckOptions : List String → Except String CheckOptions
+  | [] => Except.ok {}
+  | "--compact" :: rest =>
+      do let opts ← parseCheckOptions rest
+         pure { opts with pretty := false }
+  | "--snapshot-out" :: path :: rest =>
+      do let opts ← parseCheckOptions rest
+         pure { opts with snapshotOut? := some (FilePath.mk path) }
+  | flag :: _ => Except.error s!"Unknown check option '{flag}'"
 
 def sirStep (β γ : Float) (dt : Float) (S I R : Float) : (Float × Float × Float) :=
   -- Simple SIR with population-normalized infection
@@ -219,8 +239,13 @@ def verifyResults (checksPath resultsPath : FilePath) : IO UInt32 := do
           , "--json" ]
         , stderr := .piped }
     if child.exitCode ≠ 0 then
-      IO.eprintln "biosim-eval failed; falling back to Lean-only verification."
+      IO.eprintln "biosim-eval failed; unable to verify results."
       IO.eprintln child.stderr
+      return (1 : UInt32)
+  else
+    IO.eprintln "biosim-eval not found (expected under target/{debug,release})."
+    IO.eprintln "Build it with cargo (engine/biosim-checks) before verifying results."
+    return (1 : UInt32)
   if processed = 0 then
     IO.eprintln "results file was empty"
     return (2 : UInt32)
@@ -544,9 +569,53 @@ def parseCanonCommand : List String → Except String (FilePath × Option FilePa
   | [] => Except.error canonUsage
 
 def runCli (args : List String) : IO UInt32 := do
+  let buildId := (← IO.getEnv "VERIBIOTA_BUILD_ID").getD "dev"
+  let ver := (← IO.getEnv "VERIBIOTA_VERSION").getD toolkitVersion
   match args with
+  | "check" :: "alignment" :: "global_affine_v1" :: input :: rest =>
+      match parseCheckOptions rest with
+      | Except.ok opts =>
+          Biosim.CLI.Profile.runGlobalAffineProfile (FilePath.mk input) opts.pretty ver buildId opts.snapshotOut?
+      | Except.error msg => do
+          IO.eprintln msg
+          pure 1
+  | "check" :: "edit" :: "edit_script_v1" :: input :: rest =>
+      match parseCheckOptions rest with
+      | Except.ok opts =>
+          Biosim.CLI.Profile.runEditScriptProfile (FilePath.mk input) opts.pretty ver buildId opts.snapshotOut?
+      | Except.error msg => do
+          IO.eprintln msg
+          pure 1
+  | "check" :: "edit" :: "edit_script_normal_form_v1" :: input :: rest =>
+      match parseCheckOptions rest with
+      | Except.ok opts =>
+          Biosim.CLI.Profile.runEditScriptNormalFormProfile (FilePath.mk input) opts.pretty ver buildId opts.snapshotOut?
+      | Except.error msg => do
+          IO.eprintln msg
+          pure 1
+  | "check" :: "prime" :: "prime_edit_plan_v1" :: input :: rest =>
+      match parseCheckOptions rest with
+      | Except.ok opts =>
+          Biosim.CLI.Profile.runPrimeEditPlanProfile (FilePath.mk input) opts.pretty ver buildId opts.snapshotOut?
+      | Except.error msg => do
+          IO.eprintln msg
+          pure 1
+  | "check" :: "hmm" :: "pair_hmm_bridge_v1" :: input :: rest =>
+      match parseCheckOptions rest with
+      | Except.ok opts =>
+          Biosim.CLI.Profile.runPairHMMBridgeProfile (FilePath.mk input) opts.pretty ver buildId opts.snapshotOut?
+      | Except.error msg => do
+          IO.eprintln msg
+          pure 1
+  | "check" :: "vcf" :: "vcf_normalization_v1" :: input :: rest =>
+      match parseCheckOptions rest with
+      | Except.ok opts =>
+          Biosim.CLI.Profile.runVcfNormalizationProfile (FilePath.mk input) opts.pretty ver buildId opts.snapshotOut?
+      | Except.error msg => do
+          IO.eprintln msg
+          pure 1
   | "--version" :: _ =>
-      IO.println s!"veribiota {toolkitVersion} ({Lean.versionString})"
+      IO.println s!"veribiota {ver} ({Lean.versionString})"
       pure 0
   | "--schema-info" :: _ =>
       schemaInfo

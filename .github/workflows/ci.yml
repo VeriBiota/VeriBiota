@@ -37,6 +37,9 @@ jobs:
       - name: Build CLI (Lean)
         run: lake build
 
+      - name: Lean integration tests (profiles)
+        run: lake exe biosim_tests
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
@@ -118,8 +121,8 @@ jobs:
       - name: Build
         run: lake build
 
-      - name: Lean tests
-        run: lake env lean Tests/Main.lean
+      - name: Lean tests (profiles + artifacts)
+        run: lake exe biosim_tests
 
       - name: Docs & task cards
         run: |
@@ -398,3 +401,32 @@ jobs:
         with:
           tag_name: nightly
           files: artifacts.tgz
+
+  profile-matrix:
+    name: profile-matrix
+    if: github.event_name == 'schedule'
+    strategy:
+      matrix:
+        profile: [global_affine_v1, edit_script_v1]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan (Lean toolchain)
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
+            | sh -s -- -y --default-toolchain=$(cat lean-toolchain)
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: Fetch mathlib cache
+        run: |
+          lake update
+          lake exe cache get
+
+      - name: Build CLI (Lean)
+        run: lake build
+
+      - name: Profile suite (matrix)
+        env:
+          VERIBIOTA_PROFILE_FILTER: ${{ matrix.profile }}
+        run: lake exe biosim_tests

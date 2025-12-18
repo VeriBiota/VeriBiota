@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veribiota.dev/schemas/veribundle/v0.1",
+  "title": "VeriBiota VeriBundle v0.1",
+  "type": "object",
+  "required": ["bundle_version", "subject", "provenance", "claims", "summary"],
+  "properties": {
+    "bundle_version": { "const": "0.1" },
+    "subject": { "$ref": "#/definitions/subjectRef" },
+    "provenance": { "$ref": "#/definitions/provenance" },
+    "ir": { "$ref": "#/definitions/irPointers" },
+    "assumption_defs": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/assumptionDef" }
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/claimResult" }
+    },
+    "summary": { "$ref": "#/definitions/summary" },
+    "attachments": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/attachment" }
+    },
+    "tcb": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/trustedComponent" }
+    },
+    "signatures": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/vericert" }
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "digest": {
+      "type": "object",
+      "required": ["alg", "hex"],
+      "properties": {
+        "alg": { "const": "sha256" },
+        "hex": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" }
+      },
+      "additionalProperties": false
+    },
+    "attachment": {
+      "type": "object",
+      "required": ["media_type", "digest", "size_bytes", "privacy"],
+      "properties": {
+        "name": { "type": "string" },
+        "media_type": { "type": "string" },
+        "digest": { "$ref": "#/definitions/digest" },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "inline_base64": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9+/=]*$"
+        },
+        "uri": { "type": "string", "format": "uri" },
+        "privacy": { "type": "string", "enum": ["public", "restricted", "secret"] }
+      },
+      "additionalProperties": false
+    },
+    "subjectRef": {
+      "type": "object",
+      "required": ["kind", "format", "digest"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["Sequence", "VariantSet", "EditPlan", "Network", "PipelineRun", "File"]
+        },
+        "format": { "type": "string" },
+        "digest": { "$ref": "#/definitions/digest" },
+        "uri": { "type": "string", "format": "uri" },
+        "label": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "ioRef": {
+      "type": "object",
+      "required": ["name", "digest", "role"],
+      "properties": {
+        "name": { "type": "string" },
+        "digest": { "$ref": "#/definitions/digest" },
+        "uri": { "type": "string", "format": "uri" },
+        "role": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "softwareRef": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "container_digest": { "$ref": "#/definitions/digest" },
+        "git_commit": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["inputs", "references", "software", "parameters", "timestamp_utc"],
+      "properties": {
+        "inputs": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/ioRef" } },
+        "references": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/ioRef" } },
+        "annotations": { "type": "array", "items": { "$ref": "#/definitions/ioRef" } },
+        "software": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/softwareRef" } },
+        "parameters": { "type": "object", "additionalProperties": true },
+        "timestamp_utc": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "assumptionDef": {
+      "type": "object",
+      "required": ["id", "text"],
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "evidenceRef": {
+      "type": "object",
+      "required": ["type", "tcb_mode", "attachment_digest"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["lean_proof", "replay_trace", "stat_test", "report", "attestation"]
+        },
+        "tcb_mode": {
+          "type": "string",
+          "enum": ["proof_checked", "replayable", "trusted_computation", "statistical", "human"]
+        },
+        "attachment_digest": { "$ref": "#/definitions/digest" },
+        "summary": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": false
+    },
+    "witnessRef": {
+      "type": "object",
+      "required": ["type", "attachment_digest"],
+      "properties": {
+        "type": { "type": "string", "enum": ["counterexample", "minimal_case", "data_pointer"] },
+        "attachment_digest": { "$ref": "#/definitions/digest" },
+        "hint": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "claimResult": {
+      "type": "object",
+      "required": ["id", "title", "severity", "result", "reason"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "scope": { "type": "object", "additionalProperties": true },
+        "severity": { "type": "string", "enum": ["blocker", "warning", "info"] },
+        "assumptions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "result": { "type": "string", "enum": ["pass", "fail", "inconclusive"] },
+        "reason": { "type": "string" },
+        "evidence": { "type": "array", "items": { "$ref": "#/definitions/evidenceRef" } },
+        "witness": { "$ref": "#/definitions/witnessRef" },
+        "metrics": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": false
+    },
+    "profileRef": {
+      "type": "object",
+      "required": ["id", "digest"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^vb\\.profile\\.[^@]+@\\d+\\.\\d+\\.\\d+$" },
+        "digest": { "$ref": "#/definitions/digest" }
+      },
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "required": ["overall_result", "highest_severity_failed", "profile"],
+      "properties": {
+        "overall_result": { "type": "string", "enum": ["pass", "fail", "inconclusive"] },
+        "highest_severity_failed": { "type": "string", "enum": ["blocker", "warning", "info", "none"] },
+        "profile": { "$ref": "#/definitions/profileRef" }
+      },
+      "additionalProperties": false
+    },
+    "trustedComponent": {
+      "type": "object",
+      "required": ["name", "version", "digest", "mode"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": "string" },
+        "digest": { "$ref": "#/definitions/digest" },
+        "mode": { "type": "string", "enum": ["proof_checked", "replayable", "trusted_computation", "statistical"] },
+        "parameters": { "type": "object", "additionalProperties": true }
+      },
+      "additionalProperties": false
+    },
+    "irPointers": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/subjectRef" }
+    },
+    "vericert": {
+      "type": "object",
+      "required": ["cert_version", "bundle_digest", "signer", "signature"],
+      "properties": {
+        "cert_version": { "const": "0.1" },
+        "bundle_digest": { "$ref": "#/definitions/digest" },
+        "signer": {
+          "type": "object",
+          "required": ["key_id", "alg"],
+          "properties": {
+            "key_id": { "type": "string" },
+            "alg": { "type": "string", "enum": ["ed25519", "Ed25519"] }
+          },
+          "additionalProperties": false
+        },
+        "signature": { "type": "string" },
+        "bundle_payload_cbor_base64": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -86,7 +86,7 @@ structure SigningFixture where
   originalChecks : ByteArray
   originalCert : ByteArray
 
-noncomputable def generateSignedArtifacts (dir : FilePath) :
+def generateSignedArtifacts (dir : FilePath) :
     IO SigningFixture := do
   let keyPath := dir / "test-ed25519.pem"
   let pubDer := dir / "test-ed25519.der"
@@ -159,16 +159,37 @@ private def readJson (path : FilePath) : IO Json := do
   | Except.error err =>
       throw <| IO.userError s!"Failed to parse {path}: {err}"
 
+private def parseJsonString (payload : String) : IO Json := do
+  match Json.parse payload with
+  | Except.ok json => pure json
+  | Except.error err =>
+      throw <| IO.userError s!"Failed to parse JSON payload: {err}"
+
 private def getStringField (j : Json) (field : String) : IO String := do
   match j.getObjVal? field with
   | Except.ok (Json.str s) => pure s
   | Except.ok _ => throw <| IO.userError s!"Field '{field}' is not a string"
   | Except.error err => throw <| IO.userError s!"{err}"
 
+private def getBoolField (j : Json) (field : String) : IO Bool := do
+  match j.getObjVal? field with
+  | Except.ok (Json.bool b) => pure b
+  | Except.ok _ => throw <| IO.userError s!"Field '{field}' is not a boolean"
+  | Except.error err => throw <| IO.userError s!"{err}"
+
 private def arrayIncludes (arr : Json) (value : String) : Bool :=
   match arr with
   | Json.arr entries => entries.any fun j => j == Json.str value
   | _ => false
+
+private def jsonArrayStrings (j : Json) : Except String (List String) :=
+  match j with
+  | Json.arr entries =>
+      entries.toList.mapM fun entry =>
+        match entry with
+        | Json.str s => Except.ok s
+        | _ => Except.error "Expected string entries"
+  | _ => Except.error "Expected JSON array of strings"
 
 private def containsSubstring (haystack needle : String) : Bool :=
   (haystack.splitOn needle).length > 1
@@ -287,6 +308,172 @@ private def largeModelTest : IO Unit := do
   assertM (payload.length < 1500000)
     "Large checks bundle exceeded size guardrail"
 
+private def schemaManifestGuard : IO Unit := do
+  let manifestPath := FilePath.mk "profiles/manifest.json"
+  let manifestExists ← manifestPath.pathExists
+  assertM manifestExists s!"Missing profile manifest at {manifestPath}"
+  let manifestJson ← readJson manifestPath
+  let profiles :=
+    [ ("global_affine_v1", "schemas/align/global_affine_v1.schema.json",
+        ["VB_ALIGN_CORE_001", "VB_ALIGN_CORE_002"])
+    , ("edit_script_v1", "schemas/edit/edit_script_v1.schema.json",
+        ["VB_EDIT_001"])
+    , ("edit_script_normal_form_v1", "schemas/edit/edit_script_normal_form_v1.schema.json",
+        ["VB_EDIT_001", "VB_EDIT_002"])
+    , ("prime_edit_plan_v1", "schemas/prime/prime_edit_plan_v1.schema.json",
+        ["VB_PE_001", "VB_EDIT_001"])
+    , ("pair_hmm_bridge_v1", "schemas/hmm/pair_hmm_bridge_v1.schema.json",
+        ["VB_HMM_001", "VB_HMM_002"])
+    , ("read_set_conservation_v1", "schemas/pipeline/read_set_conservation_v1.schema.json",
+        ["VB_PIPE_001", "VB_PIPE_002"])
+    , ("vcf_normalization_v1", "schemas/variant/vcf_normalization_v1.schema.json",
+        ["VB_VCF_001", "VB_VCF_002"])
+    , ("offtarget_score_sanity_v1", "schemas/crispr/offtarget_score_sanity_v1.schema.json",
+        ["VB_OFF_001"])
+    , ("snapshot_signature_v1", "schemas/provenance/snapshot_signature_v1.schema.json",
+        ["VB_SIG_001"])
+    ]
+  for (name, schemaPathStr, expectedTheorems) in profiles do
+    let entry ←
+      match manifestJson.getObjVal? name with
+      | Except.ok v => pure v
+      | Except.error err =>
+          throw <| IO.userError s!"Manifest missing {name}: {err}"
+    match entry with
+    | Json.obj _ =>
+        let schemaHash ← getStringField entry "schema"
+        let schemaPath := FilePath.mk schemaPathStr
+        let schemaExists ← schemaPath.pathExists
+        assertM schemaExists s!"Schema path not found for {name}: {schemaPathStr}"
+        let actual ← Biosim.IO.sha256Hex schemaPath
+        assertEq schemaHash s!"sha256:{actual}"
+          s!"Schema hash mismatch for {name}"
+        match entry.getObjVal? "theorems" with
+        | Except.ok thJson =>
+            match jsonArrayStrings thJson with
+            | Except.ok ths =>
+                assertM (ths = expectedTheorems)
+                  s!"Theorem list mismatch for {name}"
+            | Except.error err =>
+                throw <| IO.userError s!"Invalid theorems for {name}: {err}"
+        | Except.error err =>
+            throw <| IO.userError s!"Missing theorem list for {name}: {err}"
+    | _ =>
+        throw <| IO.userError s!"Manifest entry for {name} must be an object"
+
+private def snapshotSignatureTest : IO Unit := do
+  let tmpDir := FilePath.mk "Tests/tmp/snapshot-signature"
+  IO.FS.createDirAll tmpDir
+  let fixturePath := FilePath.mk "Tests/profiles/global_affine_v1/match_pass.json"
+  let fixtureJson ← readJson fixturePath
+  let inputJson ←
+    match fixtureJson.getObjVal? "input" with
+    | Except.ok v => pure v
+    | Except.error err => throw <| IO.userError s!"Fixture missing input: {err}"
+  let inputPath := tmpDir / "input.json"
+  IO.FS.writeFile inputPath (inputJson.pretty 2)
+  let sigPath := tmpDir / "signature.json"
+  let child ← IO.Process.output
+    { cmd := "./veribiota"
+      , args := #["check", "alignment", "global_affine_v1", inputPath.toString, "--snapshot-out", sigPath.toString]
+      , stderr := .piped }
+  assertEq child.exitCode.toNat 0 "Snapshot signature run failed"
+  let sigExists ← sigPath.pathExists
+  assertM sigExists s!"Snapshot signature not written to {sigPath}"
+  let sigJson ← readJson sigPath
+  let profile ← getStringField sigJson "snapshot_profile"
+  assertEq profile "global_affine_v1" "Snapshot profile mismatch"
+  let verification ← getStringField sigJson "verification_result"
+  assertEq verification "passed" "Snapshot verification_result mismatch"
+  let snapshotHash ← getStringField sigJson "snapshot_hash"
+  let expectedHash := s!"sha256:{← Biosim.IO.sha256Hex inputPath}"
+  assertEq snapshotHash expectedHash "Snapshot hash mismatch"
+  let manifestJson ← readJson (FilePath.mk "profiles/manifest.json")
+  let gaEntry ←
+    match manifestJson.getObjVal? "global_affine_v1" with
+    | Except.ok v => pure v
+    | Except.error err => throw <| IO.userError s!"Manifest missing global_affine_v1: {err}"
+  let schemaHash ← getStringField gaEntry "schema"
+  let schemaPath ← getStringField gaEntry "schema_path"
+  let sigSchema ← getStringField sigJson "schema_hash"
+  assertEq sigSchema schemaHash "Snapshot schema hash mismatch"
+  let sigSchemaId ← getStringField sigJson "schema_id"
+  assertEq sigSchemaId schemaPath "Snapshot schema_id mismatch"
+  let theoremsJson ←
+    match sigJson.getObjVal? "theorem_ids" with
+    | Except.ok v => pure v
+    | Except.error err => throw <| IO.userError s!"Snapshot missing theorem_ids: {err}"
+  let theorems ←
+    match jsonArrayStrings theoremsJson with
+    | Except.ok v => pure v
+    | Except.error err => throw <| IO.userError s!"Snapshot theorem_ids invalid: {err}"
+  assertM (theorems.contains "VB_ALIGN_CORE_001") "Snapshot missing VB_ALIGN_CORE_001"
+  assertM (theorems.contains "VB_ALIGN_CORE_002") "Snapshot missing VB_ALIGN_CORE_002"
+  match sigJson.getObjVal? "instance_summary" with
+  | Except.ok (Json.obj _) => pure ()
+  | _ => throw <| IO.userError "Snapshot missing instance_summary object"
+
+private def assertJsonEq (expected actual : Json) (ctx : String) : IO Unit := do
+  let expStr := expected.compress
+  let actStr := actual.compress
+  if expStr = actStr then
+    pure ()
+  else
+    throw <| IO.userError s!"JSON mismatch for {ctx}"
+
+private def runProfileGoldenSuite (profileName : String) (cliArgs : List String)
+    (dir : FilePath) : IO Unit := do
+  match ← IO.getEnv "VERIBIOTA_PROFILE_FILTER" with
+  | some raw =>
+      let filters := raw.splitOn "," |>.map String.trim |>.filter (· ≠ "")
+      if filters ≠ [] && !(filters.contains profileName) then
+        IO.println s!"[profile-test] skipping {profileName} (filtered)"
+        return ()
+      else
+        pure ()
+  | none => pure ()
+  let dirExists ← dir.pathExists
+  assertM dirExists s!"Profile fixtures missing at {dir}"
+  let ls ← IO.Process.output
+    { cmd := "bash"
+      , args := #["-lc", s!"find {dir} -type f -name '*.json' -print | sort"]
+      , stderr := .piped }
+  if ls.exitCode ≠ 0 then
+    throw <| IO.userError s!"Failed to enumerate profile fixtures: {ls.stderr}"
+  let cases := ls.stdout.splitOn "\n" |>.filter fun s => !s.trim.isEmpty
+  assertM (cases.length > 0) "No profile fixtures found"
+  let tmpDir := FilePath.mk "Tests/tmp/profile-fixtures"
+  IO.FS.createDirAll tmpDir
+  for pathStr in cases do
+    let entryPath := FilePath.mk pathStr
+    let payload ← IO.FS.readFile entryPath
+    let parsed ← parseJsonString payload
+    let input ←
+      match parsed.getObjVal? "input" with
+      | Except.ok v => pure v
+      | Except.error err =>
+          throw <| IO.userError s!"Fixture {entryPath} missing input: {err}"
+    let expected ←
+      match parsed.getObjVal? "expected" with
+      | Except.ok v => pure v
+      | Except.error err =>
+          throw <| IO.userError s!"Fixture {entryPath} missing expected: {err}"
+    let expectedExit : Nat :=
+      match parsed.getObjValAs? Nat "exit" with
+      | Except.ok v => v
+      | Except.error _ => 0
+    let base := entryPath.fileName.getD "case"
+    let inputPath := tmpDir / s!"{base}.input.json"
+    IO.FS.writeFile inputPath (input.pretty 2)
+    let child ← IO.Process.output
+      { cmd := "./veribiota"
+        , args := (cliArgs ++ [inputPath.toString]).toArray
+        , stderr := .piped }
+    assertEq child.exitCode.toNat expectedExit
+      s!"Unexpected exit for {entryPath}"
+    let actualJson ← parseJsonString child.stdout
+    assertJsonEq expected actualJson s!"{entryPath}"
+
 private def checkRuntimeChecks (j : Json) : IO Unit := do
   match j.getObjVal? "checks" with
   | Except.ok (Json.arr entries) =>
@@ -316,7 +503,7 @@ private def checkRuntimeChecks (j : Json) : IO Unit := do
       assertM hasInvariant "Checks JSON missing lin_invariant entry with proofId"
   | _ => throw <| IO.userError "Checks JSON missing `checks` array"
 
-noncomputable def determinismTest : IO Unit := do
+def determinismTest : IO Unit := do
   withTestDir "determinism" fun dir => do
     let paths := Biosim.Examples.CertificateDemo.ArtifactPaths.fromRoot dir
     discard <| Biosim.Examples.CertificateDemo.saveArtifacts paths {}
@@ -331,7 +518,7 @@ noncomputable def determinismTest : IO Unit := do
     assertBytesEq firstCert secondCert "Certificate JSON is not deterministic"
     assertBytesEq firstChecks secondChecks "Checks JSON is not deterministic"
 
-noncomputable def crlfNormalizationTest : IO Unit := do
+def crlfNormalizationTest : IO Unit := do
   withTestDir "crlf" fun dir => do
     let paths := Biosim.Examples.CertificateDemo.ArtifactPaths.fromRoot dir
     discard <| Biosim.Examples.CertificateDemo.saveArtifacts paths {}
@@ -344,7 +531,7 @@ noncomputable def crlfNormalizationTest : IO Unit := do
     assertBytesEq canonCert origCert "Certificate canonicalization failed after CRLF"
     assertBytesEq canonChecks origChecks "Checks canonicalization failed after CRLF"
 
-noncomputable def tamperExitCodesTest : IO Unit := do
+def tamperExitCodesTest : IO Unit := do
   withTestDir "tamper" fun dir => do
     let fixture ← generateSignedArtifacts dir
     let cfg : VerifyConfig :=
@@ -360,7 +547,16 @@ noncomputable def tamperExitCodesTest : IO Unit := do
       "Payload tamper should trigger hash mismatch"
     writeBytes fixture.checksPath fixture.originalChecks
     mutateSignature fixture.checksPath fun sig =>
-      { sig with jws := "A" ++ sig.jws.drop 1 }
+      match sig.jws.splitOn "." with
+      | [header, payload, signature] =>
+          let mutated :=
+            match signature.data with
+            | [] => signature
+            | c :: rest =>
+                let c' := if c = 'A' then 'B' else 'A'
+                String.mk (c' :: rest)
+          { sig with jws := String.intercalate "." [header, payload, mutated] }
+      | _ => sig
     let codeSig ← runVerify cfg
     assertEq codeSig exitInvalidSignature
       "Signature tamper should trigger invalid signature"
@@ -377,7 +573,7 @@ noncomputable def tamperExitCodesTest : IO Unit := do
       "Missing signature not detected"
 
 /-- Integration test: regenerate artifacts and validate metadata. -/
-noncomputable def run : IO Unit := do
+def run : IO Unit := do
   determinismTest
   crlfNormalizationTest
   tamperExitCodesTest
@@ -409,9 +605,26 @@ noncomputable def run : IO Unit := do
   roundTripChecks
   corruptionTest
   largeModelTest
+  schemaManifestGuard
+  snapshotSignatureTest
+  runProfileGoldenSuite "global_affine_v1" ["check", "alignment", "global_affine_v1"]
+    (FilePath.mk "Tests/profiles/global_affine_v1")
+  runProfileGoldenSuite "edit_script_v1" ["check", "edit", "edit_script_v1"]
+    (FilePath.mk "Tests/profiles/edit_script_v1")
+  runProfileGoldenSuite "edit_script_normal_form_v1" ["check", "edit", "edit_script_normal_form_v1"]
+    (FilePath.mk "Tests/profiles/edit_script_normal_form_v1")
+  runProfileGoldenSuite "prime_edit_plan_v1" ["check", "prime", "prime_edit_plan_v1"]
+    (FilePath.mk "Tests/profiles/prime_edit_plan_v1")
+  runProfileGoldenSuite "pair_hmm_bridge_v1" ["check", "hmm", "pair_hmm_bridge_v1"]
+    (FilePath.mk "Tests/profiles/pair_hmm_bridge_v1")
+  runProfileGoldenSuite "vcf_normalization_v1" ["check", "vcf", "vcf_normalization_v1"]
+    (FilePath.mk "Tests/profiles/vcf_normalization_v1")
   IO.println "Artifact integration test passed"
 
-noncomputable unsafe def main : IO Unit :=
+unsafe def main : IO Unit :=
   run
 
 end Tests
+
+unsafe def main : IO Unit :=
+  Tests.run

@@ -1,0 +1,34 @@
+{
+  "input": {
+    "input_vcf_hash": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "normalized_vcf_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "variants": [
+      {
+        "locus": { "chrom": "chr3", "pos": 5 },
+        "original": { "ref": "GA", "alt": ["G"] },
+        "normalized": { "pos": 5, "ref": "GA", "alt": ["G"] },
+        "operations": ["none"]
+      }
+    ]
+  },
+  "expected": {
+    "theorems": ["VB_VCF_001", "VB_VCF_002"],
+    "status": "failed",
+    "signature": null,
+    "profile_version": "1.0.0",
+    "profile": "vcf_normalization_v1",
+    "instance": {
+      "variant_count": 1,
+      "normalized_ok_count": 0,
+      "all_variants_normalized": false,
+      "input_vcf_hash": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+      "normalized_vcf_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "engine": {
+      "veribiota_version": "0.1.0",
+      "lean_version": "4.9.0",
+      "build_id": "dev"
+    }
+  },
+  "exit": 2
+}

@@ -1,0 +1,28 @@
+{
+  "input": {
+    "seqA": "AC",
+    "seqB": "AGC",
+    "edits": [
+      { "type": "ins", "pos": 1, "payload": "G" }
+    ]
+  },
+  "expected": {
+    "theorems": ["VB_EDIT_001"],
+    "status": "passed",
+    "signature": null,
+    "profile_version": "1.0.0",
+    "profile": "edit_script_v1",
+    "instance": {
+      "seqA_length": 2,
+      "seqB_length": 3,
+      "edit_count": 1,
+      "applied_ok": true
+    },
+    "engine": {
+      "veribiota_version": "0.1.0",
+      "lean_version": "4.9.0",
+      "build_id": "dev"
+    }
+  },
+  "exit": 0
+}

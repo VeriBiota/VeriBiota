@@ -1,0 +1,34 @@
+name: VeriBiota Tier 0 Example
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  tier0_example:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch VeriBiota
+        run: |
+          git clone https://github.com/OmnisGenomics/VeriBiota ../veribiota
+          cd ../veribiota
+          lake update
+          lake build
+
+      - name: Run Tier 0 checks with snapshots
+        run: |
+          export PATH="../veribiota:$PATH"
+          cd examples/veribiota-example-pipeline
+          mkdir -p ci_signatures
+          veribiota check alignment global_affine_v1 ci_inputs/global_affine_v1.json --snapshot-out ci_signatures/global_affine_v1.sig.json
+          veribiota check prime prime_edit_plan_v1 ci_inputs/prime_edit_plan_v1.json --snapshot-out ci_signatures/prime_edit_plan_v1.sig.json
+          veribiota check vcf vcf_normalization_v1 ci_inputs/vcf_normalization_v1.json --snapshot-out ci_signatures/vcf_normalization_v1.sig.json
+
+      - name: Validate snapshot signatures
+        run: |
+          export PATH="../veribiota:$PATH"
+          cp ../veribiota/.github/scripts/validate_snapshots.py .
+          python3 -m pip install --quiet jsonschema
+          python3 validate_snapshots.py ci_signatures

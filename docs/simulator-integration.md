@@ -3,9 +3,12 @@
 Every run of `./veribiota simulate` now emits an end-to-end VeriBiota bundle
 (model → checks → certificate → trajectory) and immediately verifies the
 trajectory via `verify results`. The Lean driver produces the artifacts under
-`build/artifacts/…`, writes the JSONL trajectory, and calls the runtime
-evaluator (Rust if present, soft fallback otherwise). That gives you a working
-“batch via CLI” adapter with zero extra code.
+`build/artifacts/…`, writes the JSONL trajectory, and calls the Rust runtime
+evaluator (`biosim-eval`). Build it once with:
+```bash
+cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval --release
+```
+That gives you a working “batch via CLI” adapter with zero extra code.
 
 For other engines (C++/Python/Rust/…​) you can pick the integration style that
 fits your stack. The sections below outline three common adapters and point to

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veribiota.dev/schemas/edit/edit_script_v1.json",
+  "title": "VeriBiota edit script sanity v1",
+  "type": "object",
+  "required": ["seqA", "seqB", "edits"],
+  "properties": {
+    "seqA": { "type": "string" },
+    "seqB": { "type": "string" },
+    "edits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "pos"],
+        "properties": {
+          "type": { "type": "string", "enum": ["ins", "del", "sub"] },
+          "pos": { "type": "integer", "minimum": 0 },
+          "len": { "type": "integer", "minimum": 1 },
+          "payload": { "type": "string" }
+        }
+      }
+    }
+  }
+}

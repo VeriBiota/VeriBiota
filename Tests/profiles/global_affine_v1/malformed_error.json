@@ -1,0 +1,23 @@
+{
+  "input": {
+    "seqA": "A",
+    "seqB": "A",
+    "witness": { "score": 2, "trace": [ { "op": "M" } ] }
+  },
+  "expected": {
+    "theorems": ["VB_ALIGN_CORE_001", "VB_ALIGN_CORE_002"],
+    "status": "error",
+    "signature": null,
+    "profile_version": "1.0.0",
+    "profile": "global_affine_v1",
+    "instance": {
+      "error": "missing or invalid field 'scoring'"
+    },
+    "engine": {
+      "veribiota_version": "0.1.0",
+      "lean_version": "4.9.0",
+      "build_id": "dev"
+    }
+  },
+  "exit": 1
+}

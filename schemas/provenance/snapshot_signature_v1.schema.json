@@ -1,0 +1,109 @@
+{
+  "$id": "https://veribiota.org/schemas/snapshot_signature_v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "snapshot_signature_v1",
+  "description": "Signature document binding a verified snapshot to its profile, schema, theorems, and build metadata.",
+  "type": "object",
+  "properties": {
+    "snapshot_profile": {
+      "type": "string",
+      "description": "Identifier of the profile used to verify the snapshot (for example, global_affine_v1 or prime_edit_plan_v1)."
+    },
+    "snapshot_profile_version": {
+      "type": "string",
+      "description": "Optional profile version string when separate from the profile identifier."
+    },
+    "snapshot_hash": {
+      "type": "string",
+      "description": "Content hash of the verified snapshot or input payload, including a hash algorithm prefix.",
+      "pattern": "^[a-z0-9]+:[0-9a-f]{64}$"
+    },
+    "schema_hash": {
+      "type": "string",
+      "description": "Content hash of the JSON schema used for validation, including a hash algorithm prefix.",
+      "pattern": "^[a-z0-9]+:[0-9a-f]{64}$"
+    },
+    "schema_id": {
+      "type": "string",
+      "description": "Optional canonical schema identifier or URI corresponding to the schema_hash."
+    },
+    "theorem_ids": {
+      "type": "array",
+      "description": "List of theorem identifiers from the VeriBiota theorem registry that justify the verification result.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "veribiota_build_id": {
+      "type": "string",
+      "description": "Build identifier for the VeriBiota executable that produced this signature (for example, value from VERIBIOTA_BUILD_ID)."
+    },
+    "veribiota_version": {
+      "type": "string",
+      "description": "Semantic version or tag of the VeriBiota release that produced this signature."
+    },
+    "lean_version": {
+      "type": "string",
+      "description": "Version string of the Lean toolchain used to check theorems for this build."
+    },
+    "timestamp_utc": {
+      "type": "string",
+      "description": "UTC timestamp of the verification event, in ISO 8601 format.",
+      "format": "date-time"
+    },
+    "verification_result": {
+      "type": "string",
+      "description": "Result of the verification.",
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "instance_summary": {
+      "type": "object",
+      "description": "Optional summary of the verified instance (sizes, counts, statistics). The structure is profile-dependent.",
+      "additionalProperties": true
+    },
+    "provenance": {
+      "type": "object",
+      "description": "Optional provenance metadata describing context for the verification (pipeline name, environment, operator, etc.).",
+      "properties": {
+        "pipeline_id": {
+          "type": "string",
+          "description": "Identifier for the pipeline that produced the snapshot."
+        },
+        "run_id": {
+          "type": "string",
+          "description": "Identifier for the specific pipeline run."
+        },
+        "node": {
+          "type": "string",
+          "description": "Identifier for the node or host that executed the verification."
+        },
+        "extra": {
+          "type": "object",
+          "description": "Additional free-form provenance fields.",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "extra_metadata": {
+      "type": "object",
+      "description": "Optional extension point for callers to record additional metadata. Not interpreted by VeriBiota.",
+      "additionalProperties": true
+    }
+  },
+  "required": [
+    "snapshot_profile",
+    "snapshot_hash",
+    "schema_hash",
+    "theorem_ids",
+    "veribiota_build_id",
+    "timestamp_utc",
+    "verification_result"
+  ],
+  "additionalProperties": false
+}

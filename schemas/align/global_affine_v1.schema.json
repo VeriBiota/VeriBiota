@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veribiota.dev/schemas/align/global_affine_v1.json",
+  "title": "VeriBiota global affine alignment v1",
+  "type": "object",
+  "required": ["seqA", "seqB", "scoring", "witness"],
+  "properties": {
+    "seqA": { "type": "string" },
+    "seqB": { "type": "string" },
+    "scoring": {
+      "type": "object",
+      "required": ["match", "mismatch", "gap_open", "gap_extend"],
+      "properties": {
+        "match": { "type": "integer" },
+        "mismatch": { "type": "integer" },
+        "gap_open": { "type": "integer" },
+        "gap_extend": { "type": "integer" }
+      }
+    },
+    "witness": {
+      "type": "object",
+      "required": ["score", "trace"],
+      "properties": {
+        "score": { "type": "integer" },
+        "trace": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["op"],
+            "properties": {
+              "op": { "type": "string", "enum": ["M", "I", "D"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://veribiota.dev/schemas/edit/edit_script_normal_form_v1.json",
+  "title": "VeriBiota edit script normal form v1",
+  "type": "object",
+  "required": ["seqA", "seqB", "edits"],
+  "properties": {
+    "seqA": { "type": "string" },
+    "seqB": { "type": "string" },
+    "edits": { "$ref": "#/$defs/edit_array" },
+    "normalized_edits": { "$ref": "#/$defs/edit_array" }
+  },
+  "$defs": {
+    "edit": {
+      "type": "object",
+      "required": ["type", "pos"],
+      "properties": {
+        "type": { "type": "string", "enum": ["ins", "del", "sub"] },
+        "pos": { "type": "integer", "minimum": 0 },
+        "len": { "type": "integer", "minimum": 1 },
+        "payload": { "type": "string" }
+      }
+    },
+    "edit_array": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edit" }
+    }
+  }
+}

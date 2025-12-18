@@ -33,7 +33,7 @@ pilot-demo: emit sign-soft verify
 .PHONY: simulate eval
 
 # Run a quick ODE-like simulation and verify results metadata
-simulate:
+simulate: biosim-eval
 	./veribiota simulate --steps 50 --dt 0.25 --out build/results/sir-sim.jsonl
 	./veribiota verify results $(CHECKS) build/results/sir-sim.jsonl
 
@@ -45,7 +45,7 @@ eval:
 	  $(MAKE) emit; fi
 	@if [ ! -f build/results/sir-sim.jsonl ]; then \
 	  $(MAKE) simulate; fi
-	cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval
+	CARGO_TARGET_DIR=target cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval
 	./target/debug/biosim-eval --checks $(CHECKS) --results build/results/sir-sim.jsonl || true
 	./target/debug/biosim-eval --json --checks $(CHECKS) --results build/results/sir-sim.jsonl || true
 
@@ -53,15 +53,9 @@ eval:
 verify-results:
 	@if [ ! -f $(CHECKS) ]; then \
 	  $(MAKE) emit; fi
+	$(MAKE) biosim-eval
 	@if [ ! -f build/results/sir-sim.jsonl ]; then \
 	  $(MAKE) simulate; fi
-	@if command -v cargo >/dev/null 2>&1; then \
-	  echo "[verify-results] building biosim-eval (release)"; \
-	  cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval --release || \
-	    echo "[verify-results] cargo build failed; proceeding with CLI fallback"; \
-	else \
-	  echo "[verify-results] cargo not found; proceeding with CLI fallback"; \
-	fi
 	./veribiota verify results $(CHECKS) build/results/sir-sim.jsonl
 
 # Validate checks and certificate JSON against schemas
@@ -73,7 +67,15 @@ check:
 MINISIGN_SEC?=$(VERIBIOTA_MINISIGN_SEC)
 MINISIGN_PUB?=$(VERIBIOTA_MINISIGN_PUB)
 
-.PHONY: minisign verify-minisign
+.PHONY: biosim-eval minisign verify-minisign
+
+biosim-eval:
+	@if ! command -v cargo >/dev/null 2>&1; then \
+	  echo "[biosim-eval] cargo is required to build biosim-eval"; \
+	  exit 1; \
+	fi
+	@echo "[biosim-eval] building biosim-eval (release)"
+	CARGO_TARGET_DIR=target cargo build --manifest-path engine/biosim-checks/Cargo.toml --bin biosim-eval --release
 
 minisign:
 	@[[ -n "$(MINISIGN_SEC)" ]] || (echo "[minisign] set VERIBIOTA_MINISIGN_SEC to your .key path" && exit 2)

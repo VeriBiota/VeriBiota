@@ -36,6 +36,6 @@ Tolerances are optional; default is strict conservation.
 ## Next steps
 Implement the Rust checks and the schema cleanup first; these two unlock credibility and integrations.
 
-Cut a v0.2.0 with version flags + fixed validator.
+Done in v0.2.1: version flags + fixed snapshot validator.
 
 Then ship Python/Node wrappers and wire VeriBiota bundles into your engine pipeline so every run leaves a certificate trail.

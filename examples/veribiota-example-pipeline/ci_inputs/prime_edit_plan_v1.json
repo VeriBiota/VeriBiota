@@ -1,0 +1,13 @@
+{
+  "ref_seq": "ACGT",
+  "target_seq": "AGGT",
+  "pegRNA": {
+    "spacer": "ACG",
+    "pam": "T",
+    "rt_template": "GGGGGGGGGG",
+    "pbs": "TTTTTTTT"
+  },
+  "net_edit_script": [
+    { "type": "sub", "pos": 1, "len": 1, "payload": "G" }
+  ]
+}

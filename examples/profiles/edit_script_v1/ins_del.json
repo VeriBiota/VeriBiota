@@ -1,0 +1,7 @@
+{
+  "seqA": "AC",
+  "seqB": "AGC",
+  "edits": [
+    { "type": "ins", "pos": 1, "payload": "G" }
+  ]
+}

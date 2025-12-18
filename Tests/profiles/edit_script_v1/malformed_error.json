@@ -1,0 +1,22 @@
+{
+  "input": {
+    "seqA": "AC",
+    "seqB": "AG"
+  },
+  "expected": {
+    "theorems": ["VB_EDIT_001"],
+    "status": "error",
+    "signature": null,
+    "profile_version": "1.0.0",
+    "profile": "edit_script_v1",
+    "instance": {
+      "error": "missing or invalid field 'edits'"
+    },
+    "engine": {
+      "veribiota_version": "0.1.0",
+      "lean_version": "4.9.0",
+      "build_id": "dev"
+    }
+  },
+  "exit": 1
+}
