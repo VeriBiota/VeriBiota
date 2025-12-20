@@ -17,7 +17,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'c-cpp', 'javascript', 'rust' ]
+        include:
+          - language: c-cpp
+            build-mode: manual
+          - language: javascript
+            build-mode: none
+          - language: rust
+            build-mode: none
 
     steps:
       - name: Checkout repository
@@ -27,16 +33,38 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
 
       # For C/C++, default autobuild tends to pick the repo root Makefile (which
       # triggers `lake`/Lean builds here) and can turn CodeQL into a >1h job.
       # We only need C++ coverage for the tiny adapter demo, so build that
       # explicitly instead.
+      - name: Cache Rust dependencies
+        if: matrix.language == 'c-cpp'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            engine/biosim-checks/target
+          key: rust-cargo-${{ runner.os }}-${{ hashFiles('engine/biosim-checks/Cargo.lock') }}
+          restore-keys: |
+            rust-cargo-${{ runner.os }}-
+
       - name: Build biosim-checks (Rust FFI library)
         if: matrix.language == 'c-cpp'
         run: |
           set -euo pipefail
-          cargo build --manifest-path engine/biosim-checks/Cargo.toml --release
+          cargo build --manifest-path engine/biosim-checks/Cargo.toml
+
+      - name: Cache ccache
+        if: matrix.language == 'c-cpp'
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ runner.os }}-${{ hashFiles('adapters/cpp/CMakeLists.txt') }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
 
       - name: Build C++ adapter (CMake)
         if: matrix.language == 'c-cpp'
@@ -44,10 +72,10 @@ jobs:
           set -euo pipefail
           VERIBIOTA_CHECKS_LIB=""
           for cand in \
-            "$PWD/engine/biosim-checks/target/release/deps/libbiosim_checks.so" \
-            "$PWD/engine/biosim-checks/target/release/deps/libbiosim_checks.dylib" \
-            "$PWD/engine/biosim-checks/target/release/deps/libbiosim_checks.a" \
-            "$PWD/engine/biosim-checks/target/release/deps/biosim_checks.lib"; do
+            "$PWD/engine/biosim-checks/target/debug/deps/libbiosim_checks.so" \
+            "$PWD/engine/biosim-checks/target/debug/deps/libbiosim_checks.dylib" \
+            "$PWD/engine/biosim-checks/target/debug/deps/libbiosim_checks.a" \
+            "$PWD/engine/biosim-checks/target/debug/deps/biosim_checks.lib"; do
             if [[ -f "$cand" ]]; then
               VERIBIOTA_CHECKS_LIB="$cand"
               break
@@ -55,17 +83,16 @@ jobs:
           done
           if [[ -z "$VERIBIOTA_CHECKS_LIB" ]]; then
             echo "libbiosim_checks not found after cargo build. Contents:"
-            ls -la engine/biosim-checks/target/release/deps || true
+            ls -la engine/biosim-checks/target/debug/deps || true
             exit 1
           fi
 
           cmake -S adapters/cpp -B adapters/cpp/build \
-            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
             -DVERIBIOTA_CHECKS_LIB="$VERIBIOTA_CHECKS_LIB"
-          cmake --build adapters/cpp/build --config Release -j"$(nproc)"
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v4
+          cmake --build adapters/cpp/build --config Debug -j"$(nproc)"
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
