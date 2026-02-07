@@ -9,7 +9,7 @@
   "devDependencies": {
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
-    "glob": "^13.0.0",
+    "glob": "^13.0.1",
     "yaml": "^2.4.2"
   }
 }
