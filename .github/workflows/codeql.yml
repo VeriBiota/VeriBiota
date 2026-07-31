@@ -4,8 +4,7 @@ on:
   push:
     branches: [ "main" ]
     tags-ignore: [ "v*" ]
-  pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,7 +12,7 @@ permissions:
 
 jobs:
   analyze:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS) }}
     strategy:
       fail-fast: false
       matrix:
@@ -57,7 +56,7 @@ jobs:
           set -euo pipefail
           cargo build --manifest-path engine/biosim-checks/Cargo.toml
       - name: Install ccache
-        run: sudo apt-get update && sudo apt-get install -y ccache
+        run: nix profile install nixpkgs#ccache
         
       - name: Cache ccache
         if: matrix.language == 'c-cpp'

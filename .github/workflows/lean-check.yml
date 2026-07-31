@@ -1,7 +1,8 @@
 name: lean-check
 
 on:
-  pull_request:
+  push:
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -9,15 +10,15 @@ permissions:
 
 jobs:
   lean-check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS) }}
     steps:
       - uses: actions/checkout@v6
 
       - name: Install elan (Lean toolchain)
         run: |
           curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
-            | sh -s -- -y --default-toolchain=$(cat lean-toolchain)
-          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+            | sh -s -- -y --default-toolchain="$(cat lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Cache Lake artifacts
         uses: actions/cache@v5

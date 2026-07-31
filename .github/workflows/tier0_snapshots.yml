@@ -8,19 +8,19 @@ on:
       - "profiles/**"
       - "Tests/profiles/**"
       - ".github/scripts/validate_snapshots.py"
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   tier0_snapshots:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS) }}
     steps:
       - uses: actions/checkout@v6
       - name: Install checksum utilities
-        run: sudo apt-get update && sudo apt-get install -y coreutils
+        run: nix shell nixpkgs#coreutils --command sha256sum --version
       - name: Install Lean
         run: |
           curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
-          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Cache Lake artifacts
         uses: actions/cache@v5

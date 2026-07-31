@@ -14,18 +14,20 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
+            runner: ${{ fromJSON(vars.CI_RUNNER_LABELS) }}
             platform: linux-amd64
           - os: macos-latest
+            runner: macos-latest
             platform: macos-universal
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v6
 
       - name: Install elan (Lean toolchain)
         run: |
           curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf \
-            | sh -s -- -y --default-toolchain=$(cat lean-toolchain)
-          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+            | sh -s -- -y --default-toolchain="$(cat lean-toolchain)"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Cache Lake artifacts
         uses: actions/cache@v5
