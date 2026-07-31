@@ -2,6 +2,7 @@ name: VeriBiota Tier0 + Snapshot Attestation
 
 on:
   push:
+    branches: [main]
     paths:
       - "schemas/**"
       - "profiles/**"
