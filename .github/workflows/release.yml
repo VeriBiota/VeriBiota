@@ -68,7 +68,7 @@ jobs:
           tar -czf "dist/$bundle.tar.gz" -C dist "$bundle"
 
       - name: Upload release asset
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/veribiota-${{ github.ref_name }}-${{ matrix.platform }}.tar.gz
         env:
