@@ -203,8 +203,9 @@ lake exe veribiota-check
 ```
 
 ## Releases
-On `v*` tags, CI publishes:
-- **Prebuilt CLI bundles** (binary + `schemas/` + `profiles/manifest.json`) so `veribiota check … --snapshot-out …` works from the extracted directory.
+On `vX.Y.Z` tags, CI verifies the tag points at `main` and that `Nix CI`
+passed for the tagged commit. The Docker release workflow also publishes the
+tagged GHCR image.
 
 Tag to release:
 
