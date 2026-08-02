@@ -5,9 +5,18 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: nix-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   nix-ci:
     uses: OmnisGenomics/.github/.github/workflows/nix-ci.yml@main
     with:
-      publish_cache: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
-    secrets: inherit
+      publish_cache: ${{ github.ref == 'refs/heads/main' }}
+    secrets:
+      MONARCHIC_GITHUB_PAT: ${{ secrets.MONARCHIC_GITHUB_PAT }}
