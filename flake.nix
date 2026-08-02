@@ -271,6 +271,48 @@
               python .github/scripts/validate_snapshots.py ci_signatures
             '';
           };
+          codeql-cpp-build = pkgs.writeShellApplication {
+            name = "veribiota-codeql-cpp-build";
+            runtimeInputs = [
+              pkgs.cargo
+              pkgs.ccache
+              pkgs.cmake
+              pkgs.coreutils
+              pkgs.gcc
+              pkgs.gnumake
+              pkgs.rustc
+            ];
+            text = ''
+              set -euo pipefail
+
+              cargo build --manifest-path engine/biosim-checks/Cargo.toml
+
+              checks_lib=""
+              for candidate in \
+                "$PWD/engine/biosim-checks/target/debug/deps/libbiosim_checks.so" \
+                "$PWD/engine/biosim-checks/target/debug/deps/libbiosim_checks.dylib" \
+                "$PWD/engine/biosim-checks/target/debug/deps/libbiosim_checks.a" \
+                "$PWD/engine/biosim-checks/target/debug/deps/biosim_checks.lib"; do
+                if [[ -f "$candidate" ]]; then
+                  checks_lib="$candidate"
+                  break
+                fi
+              done
+
+              if [[ -z "$checks_lib" ]]; then
+                echo "libbiosim_checks not found after cargo build. Contents:" >&2
+                ls -la engine/biosim-checks/target/debug/deps >&2 || true
+                exit 1
+              fi
+
+              cmake -S adapters/cpp -B adapters/cpp/build \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+                -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+                -DVERIBIOTA_CHECKS_LIB="$checks_lib"
+              cmake --build adapters/cpp/build --config Debug -j"$(nproc)"
+            '';
+          };
         in
         {
           lean-check = {
@@ -283,6 +325,11 @@
             program = "${tier0-snapshots}/bin/veribiota-tier0-snapshots";
             meta.description = "Run VeriBiota Tier 0 snapshot attestation checks";
           };
+          codeql-cpp-build = {
+            type = "app";
+            program = "${codeql-cpp-build}/bin/veribiota-codeql-cpp-build";
+            meta.description = "Build VeriBiota's C++ adapter for CodeQL manual C/C++ analysis";
+          };
         });
 
       devShells = forAllSystems (system:
@@ -293,6 +340,8 @@
           default = pkgs.mkShell {
             packages = [
               pkgs.cargo
+              pkgs.ccache
+              pkgs.cmake
               pkgs.elan
               pkgs.gnumake
               pkgs.hadolint
