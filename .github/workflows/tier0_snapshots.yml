@@ -1,4 +1,4 @@
-name: VeriBiota Tier0 + Snapshot Attestation
+name: Tier 0 Snapshots
 
 on:
   push:
@@ -8,54 +8,16 @@ on:
       - "profiles/**"
       - "Tests/profiles/**"
       - ".github/scripts/validate_snapshots.py"
+      - "flake.nix"
+      - "flake.lock"
   workflow_dispatch:
 
 jobs:
-  tier0_snapshots:
-    runs-on: ${{ fromJSON(vars.CI_RUNNER_LABELS) }}
-    steps:
-      - uses: actions/checkout@v6
-      - name: Install checksum utilities
-        run: nix shell nixpkgs#coreutils --command sha256sum --version
-      - name: Install Lean
-        run: |
-          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y
-          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
-
-      - name: Cache Lake artifacts
-        uses: actions/cache@v5
-        with:
-          path: .lake
-          key: lake-${{ runner.os }}-${{ hashFiles('lean-toolchain', 'lakefile.lean', 'lake-manifest.json') }}
-          restore-keys: |
-            lake-${{ runner.os }}-
-
-      - name: Build VeriBiota
-        run: |
-          lake update
-          lake exe cache get
-          lake build
-
-      - name: Run Tier 0 tests
-        run: lake exe biosim_tests
-
-      - name: Run Tier 0 checks and emit signatures
-        run: |
-          mkdir -p ci_signatures
-          jq .input Tests/profiles/global_affine_v1/match_pass.json \
-            | ./veribiota check alignment global_affine_v1 - --snapshot-out ci_signatures/global_affine_v1.sig.json --compact
-          jq .input Tests/profiles/edit_script_normal_form_v1/pass_simple_normal.json \
-            | ./veribiota check edit edit_script_normal_form_v1 - --snapshot-out ci_signatures/edit_script_normal_form_v1.sig.json --compact
-          jq .input Tests/profiles/prime_edit_plan_v1/pass_simple.json \
-            | ./veribiota check prime prime_edit_plan_v1 - --snapshot-out ci_signatures/prime_edit_plan_v1.sig.json --compact
-          jq .input Tests/profiles/pair_hmm_bridge_v1/pass_simple.json \
-            | ./veribiota check hmm pair_hmm_bridge_v1 - --snapshot-out ci_signatures/pair_hmm_bridge_v1.sig.json --compact
-          jq .input Tests/profiles/vcf_normalization_v1/ok_minimal.json \
-            | ./veribiota check vcf vcf_normalization_v1 - --snapshot-out ci_signatures/vcf_normalization_minimal.sig.json --compact
-          jq .input Tests/profiles/vcf_normalization_v1/ok_complex.json \
-            | ./veribiota check vcf vcf_normalization_v1 - --snapshot-out ci_signatures/vcf_normalization_complex.sig.json --compact
-
-      - name: Validate snapshot signatures
-        run: |
-          python3 -m pip install --quiet jsonschema
-          python3 .github/scripts/validate_snapshots.py ci_signatures
+  tier0-snapshots:
+    uses: OmnisGenomics/.github/.github/workflows/maintenance.yml@main
+    with:
+      maintenance_command: nix run .#tier0-snapshots
+      report_artifact_name: tier0-snapshots-report
+      report_path: tier0-snapshots-report.md
+      timeout_minutes: 60
+    secrets: inherit
